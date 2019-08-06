@@ -66,7 +66,7 @@ DataWriterImpl::DataWriterImpl()
     topic_id_(GUID_UNKNOWN),
     topic_servant_(0),
     listener_mask_(DEFAULT_STATUS_MASK),
-    domain_id_(0),
+    domain_(0),
     publication_id_(GUID_UNKNOWN),
     sequence_number_(SequenceNumber::SEQUENCENUMBER_UNKNOWN()),
     coherent_(false),
@@ -134,7 +134,8 @@ DataWriterImpl::init(
   DDS::DataWriterListener_ptr          a_listener,
   const DDS::StatusMask &              mask,
   OpenDDS::DCPS::WeakRcHandle<OpenDDS::DCPS::DomainParticipantImpl> participant_servant,
-  OpenDDS::DCPS::PublisherImpl *         publisher_servant)
+  OpenDDS::DCPS::PublisherImpl *         publisher_servant,
+  Domain*                                domain)
 {
   DBG_ENTRY_LVL("DataWriterImpl","init",6);
   topic_servant_ = topic_servant;
@@ -157,7 +158,7 @@ DataWriterImpl::init(
   participant_servant_ = participant_servant;
 
   RcHandle<DomainParticipantImpl> participant = participant_servant.lock();
-  domain_id_ = participant->get_domain_id();
+  domain_ = domain;
 
   // Only store the publisher pointer, since it is our parent, we will
   // exist as long as it does.
@@ -323,9 +324,7 @@ DataWriterImpl::transport_assoc_done(int flags, const RepoId& remote_id)
                  ACE_TEXT("ERROR: DataWriter (%C) should always be active in current implementation\n"),
                  OPENDDS_STRING(conv).c_str()));
     }
-    Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-    disco->association_complete(domain_id_, dp_id_,
-                                publication_id_, remote_id);
+    domain_->association_complete(dp_id_, publication_id_, remote_id);
   }
 }
 
@@ -873,19 +872,13 @@ DataWriterImpl::set_qos(const DDS::DataWriterQos & qos)
         return DDS::RETCODE_IMMUTABLE_POLICY;
 
       } else {
-        Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
         DDS::PublisherQos publisherQos;
         RcHandle<PublisherImpl> publisher = this->publisher_servant_.lock();
 
         bool status = false;
         if (publisher) {
           publisher->get_qos(publisherQos);
-          status
-            = disco->update_publication_qos(domain_id_,
-                                            dp_id_,
-                                            this->publication_id_,
-                                            qos,
-                                            publisherQos);
+          status = domain_->update_publication_qos(dp_id_, this->publication_id_, qos, publisherQos);
         }
         if (!status) {
           ACE_ERROR_RETURN((LM_ERROR,
@@ -1331,7 +1324,7 @@ DataWriterImpl::enable()
                                            max_durable_per_instance,
                                            qos_.reliability.max_blocking_time,
                                            n_chunks_,
-                                           domain_id_,
+                                           domain_->domain_id(),
                                            topic_name_,
                                            get_type_name(),
 #ifndef OPENDDS_NO_PERSISTENCE_PROFILE
@@ -1406,8 +1399,7 @@ DataWriterImpl::enable()
                            ref(this->last_deadline_missed_total_count_));
   }
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-  disco->pre_writer(this);
+  domain_->pre_writer(this);
 
   this->set_enabled();
 
@@ -1430,13 +1422,13 @@ DataWriterImpl::enable()
   publisher->get_qos(pub_qos);
 
   this->publication_id_ =
-    disco->add_publication(this->domain_id_,
-                           this->dp_id_,
-                           this->topic_servant_->get_id(),
-                           this,
-                           this->qos_,
-                           trans_conf_info,
-                           pub_qos);
+    domain_->add_publication(
+			     this->dp_id_,
+			     this->topic_servant_->get_id(),
+			     this,
+			     this->qos_,
+			     trans_conf_info,
+			     pub_qos);
 
 
   if (!publisher || this->publication_id_ == GUID_UNKNOWN) {
@@ -1462,7 +1454,7 @@ DataWriterImpl::enable()
   // queue.
   if (durability_cache != 0) {
 
-    if (!durability_cache->get_data(this->domain_id_,
+    if (!durability_cache->get_data(domain_->domain_id(),
                                     this->topic_name_,
                                     get_type_name(),
                                     this,
@@ -2421,7 +2413,7 @@ bool
 DataWriterImpl::send_liveliness(const ACE_Time_Value& now)
 {
   if (this->qos_.liveliness.kind == DDS::MANUAL_BY_TOPIC_LIVELINESS_QOS ||
-      !TheServiceParticipant->get_discovery(domain_id_)->supports_liveliness()) {
+      !domain_->supports_liveliness()) {
     DDS::Time_t t = time_value_to_time(now);
     DataSampleHeader header;
     Message_Block_Ptr empty;

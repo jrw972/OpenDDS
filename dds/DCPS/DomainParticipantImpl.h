@@ -54,7 +54,7 @@ class SubscriberImpl;
 class DataWriterImpl;
 class DomainParticipantFactoryImpl;
 class Monitor;
-
+class Domain;
 
 class RecorderImpl;
 class ReplayerImpl;
@@ -129,7 +129,7 @@ public:
   typedef OPENDDS_MAP(DDS::InstanceHandle_t, RepoId) RepoIdMap;
 
   DomainParticipantImpl(DomainParticipantFactoryImpl *     factory,
-                        const DDS::DomainId_t&             domain_id,
+			Domain*                            domain,
                         const DDS::DomainParticipantQos &  qos,
                         DDS::DomainParticipantListener_ptr a_listener,
                         const DDS::StatusMask &            mask);
@@ -439,8 +439,7 @@ private:
   DDS::Security::ParticipantCryptoHandle part_crypto_handle_;
   #endif
 
-  /// The id of the domain that creates this participant.
-  const DDS::DomainId_t domain_id_;
+  Domain* domain_;
   /// This participant id given by discovery.
   RepoId dp_id_;
 

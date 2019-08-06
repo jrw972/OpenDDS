@@ -42,6 +42,7 @@
 #include "RcEventHandler.h"
 #include "TopicImpl.h"
 #include "DomainParticipantImpl.h"
+#include "Domain.h"
 
 #include "ace/String_Base.h"
 #include "ace/Reverse_Lock_T.h"
@@ -258,7 +259,8 @@ public:
     DDS::DataReaderListener_ptr a_listener,
     const DDS::StatusMask &     mask,
     DomainParticipantImpl*        participant,
-    SubscriberImpl*               subscriber);
+    SubscriberImpl*               subscriber,
+    Domain*                       domain);
 
   virtual DDS::ReadCondition_ptr create_readcondition(
     DDS::SampleStateMask sample_states,
@@ -680,7 +682,7 @@ private:
 #endif
 
   const RepoId& get_repo_id() const { return this->subscription_id_; }
-  DDS::DomainId_t domain_id() const { return this->domain_id_; }
+  DDS::DomainId_t domain_id() const { return domain_->domain_id(); }
 
   Priority get_priority_value(const AssociationData& data) const {
     return data.publication_transport_priority_;
@@ -709,7 +711,7 @@ private:
   DDS::TopicDescription_var    topic_desc_;
   DDS::StatusMask              listener_mask_;
   DDS::DataReaderListener_var  listener_;
-  DDS::DomainId_t              domain_id_;
+  Domain*                      domain_;
   RepoId                       dp_id_;
   // subscriber_servant_ has to be a weak pinter because it may be used from the
   // transport reactor thread and that thread doesn't have the owenership of the

@@ -15,6 +15,7 @@
 #include "Qos_Helper.h"
 #include "Util.h"
 #include "tao/debug.h"
+#include "Domain.h"
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 
@@ -29,6 +30,7 @@ DomainParticipantFactoryImpl::DomainParticipantFactoryImpl()
 
 DomainParticipantFactoryImpl::~DomainParticipantFactoryImpl()
 {
+  cleanup();
   if (DCPS_debug_level > 0) {
     ACE_DEBUG((LM_DEBUG,
                "%T (%P|%t) DomainParticipantFactoryImpl::"
@@ -65,8 +67,17 @@ DomainParticipantFactoryImpl::create_participant(
     return DDS::DomainParticipant::_nil();
   }
 
+  Domain* domain = get_domain(domainId);
+  if (!domain) {
+    ACE_ERROR((LM_ERROR,
+               ACE_TEXT("(%P|%t) ERROR: ")
+               ACE_TEXT("DomainParticipantFactoryImpl::create_participant, ")
+               ACE_TEXT("could not create domain.\n")));
+    return DDS::DomainParticipant::_nil();
+  }
+
   RcHandle<DomainParticipantImpl> dp =
-    make_rch<DomainParticipantImpl>(this, domainId, par_qos, a_listener, mask);
+    make_rch<DomainParticipantImpl>(this, domain, par_qos, a_listener, mask);
 
   if (qos_.entity_factory.autoenable_created_entities) {
     if (dp->enable() != DDS::RETCODE_OK) {
@@ -178,16 +189,14 @@ DomainParticipantFactoryImpl::delete_participant(
     }
   }
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id);
-  if (disco) {
-    if (!disco->remove_domain_participant(domain_id,
-                                          dp_id)) {
-      ACE_ERROR_RETURN((LM_ERROR,
-                        ACE_TEXT("(%P|%t) ERROR: ")
-                        ACE_TEXT("could not remove domain participant.\n")),
-                       DDS::RETCODE_ERROR);
-    }
+  Domain* domain = get_domain(domain_id);
+  if (!domain->remove_domain_participant(dp_id)) {
+    ACE_ERROR_RETURN((LM_ERROR,
+		      ACE_TEXT("(%P|%t) ERROR: ")
+		      ACE_TEXT("could not remove domain participant.\n")),
+		     DDS::RETCODE_ERROR);
   }
+
   return DDS::RETCODE_OK;
 }
 
@@ -288,6 +297,35 @@ void DomainParticipantFactoryImpl::cleanup()
       (*dp_set_itr)->delete_contained_entities();
     }
   }
+  participants_.clear();
+
+  for (DomainMap::iterator pos = domain_map_.begin(), limit = domain_map_.end(); pos != limit; ++pos) {
+    if (pos->second) delete pos->second;
+  }
+  domain_map_.clear();
+}
+
+Domain* DomainParticipantFactoryImpl::get_domain(const DDS::DomainId_t domain_id)
+{
+  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex,
+                   tao_mon,
+                   this->participants_protector_,
+                   0);
+
+  DomainMap::iterator pos = domain_map_.find(domain_id);
+  if (pos != domain_map_.end()) {
+    return pos->second;
+  }
+
+  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id);
+  if (!disco) {
+    domain_map_[domain_id] = 0;
+    return 0;
+  }
+
+  Domain* dom = new Domain(domain_id, new LegacyDiscovery(disco));
+  domain_map_[domain_id] = dom;
+  return dom;
 }
 
 } // namespace DCPS

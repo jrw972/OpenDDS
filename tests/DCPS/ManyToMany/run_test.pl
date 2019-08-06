@@ -284,7 +284,7 @@ for ($index = 0; $index < $sub_processes; ++$index) {
 
 # first subscriber process needs to be killed a little after the
 # total expected duration
-my $wait_to_kill = $total_duration_msec * 2;
+my $wait_to_kill = $total_duration_msec * 2 / 1000;
 print "wait_to_kill=$wait_to_kill\n";
 # ignore this issue that is already being tracked in redmine
 $test->ignore_error("(Redmine Issue# 1446)");

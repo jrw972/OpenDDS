@@ -1673,7 +1673,7 @@ namespace OpenDDS {
 
       explicit PeerDiscovery(const RepoKey& key) : Discovery(key) { }
 
-      virtual DDS::Subscriber_ptr init_bit(DomainParticipantImpl* participant) {
+      virtual DDS::Subscriber_ptr init_bit(DomainParticipantImpl* participant, Domain* domain) {
         using namespace DCPS;
         if (create_bit_topics(participant) != DDS::RETCODE_OK) {
           return 0;
@@ -1698,22 +1698,22 @@ namespace OpenDDS {
         DDS::TopicDescription_var bit_part_topic =
           participant->lookup_topicdescription(BUILT_IN_PARTICIPANT_TOPIC);
         create_bit_dr(bit_part_topic, BUILT_IN_PARTICIPANT_TOPIC_TYPE,
-                      sub, dr_qos);
+                      sub, dr_qos, domain);
 
         DDS::TopicDescription_var bit_topic_topic =
           participant->lookup_topicdescription(BUILT_IN_TOPIC_TOPIC);
         create_bit_dr(bit_topic_topic, BUILT_IN_TOPIC_TOPIC_TYPE,
-                      sub, dr_qos);
+                      sub, dr_qos, domain);
 
         DDS::TopicDescription_var bit_pub_topic =
           participant->lookup_topicdescription(BUILT_IN_PUBLICATION_TOPIC);
         create_bit_dr(bit_pub_topic, BUILT_IN_PUBLICATION_TOPIC_TYPE,
-                      sub, dr_qos);
+                      sub, dr_qos, domain);
 
         DDS::TopicDescription_var bit_sub_topic =
           participant->lookup_topicdescription(BUILT_IN_SUBSCRIPTION_TOPIC);
         create_bit_dr(bit_sub_topic, BUILT_IN_SUBSCRIPTION_TOPIC_TYPE,
-                      sub, dr_qos);
+                      sub, dr_qos, domain);
 
         const DDS::ReturnCode_t ret = bit_subscriber->enable();
         if (ret != DDS::RETCODE_OK) {
@@ -1957,7 +1957,8 @@ namespace OpenDDS {
 
       void create_bit_dr(DDS::TopicDescription_ptr topic, const char* type,
                          DCPS::SubscriberImpl* sub,
-                         const DDS::DataReaderQos& qos)
+                         const DDS::DataReaderQos& qos,
+			 Domain* domain)
       {
         using namespace DCPS;
         TopicDescriptionImpl* bit_topic_i =
@@ -1988,7 +1989,7 @@ namespace OpenDDS {
           return;
         }
 
-        dri->init(bit_topic_i, qos, 0 /*listener*/, 0 /*mask*/, participant_i, sub);
+        dri->init(bit_topic_i, qos, 0 /*listener*/, 0 /*mask*/, participant_i, sub, domain);
         dri->disable_transport();
         dri->enable();
       }

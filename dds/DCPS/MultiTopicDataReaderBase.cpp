@@ -91,8 +91,9 @@ namespace OpenDDS {
 namespace DCPS {
 
 void MultiTopicDataReaderBase::init(const DDS::DataReaderQos& dr_qos,
-  DDS::DataReaderListener_ptr a_listener, DDS::StatusMask mask,
-  SubscriberImpl* parent, MultiTopicImpl* multitopic)
+				    DDS::DataReaderListener_ptr a_listener, DDS::StatusMask mask,
+				    SubscriberImpl* parent, MultiTopicImpl* multitopic,
+				    Domain* domain)
 {
   using namespace std;
   DDS::DataReader_var dr = multitopic->get_type_support()->create_datareader();
@@ -121,7 +122,7 @@ void MultiTopicDataReaderBase::init(const DDS::DataReaderQos& dr_qos,
       ACE_TEXT("Failed to get DomainParticipantImpl.\n")));
     return;
   }
-  resulting_impl->init(multitopic, dr_qos, a_listener, mask, dpi, parent);
+  resulting_impl->init(multitopic, dr_qos, a_listener, mask, dpi, parent, domain);
 
   init_typed(resulting_reader_);
 

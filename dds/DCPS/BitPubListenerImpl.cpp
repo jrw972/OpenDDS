@@ -16,14 +16,17 @@
 #include "Service_Participant.h"
 #include "BuiltInTopicUtils.h"
 #include "dds/DdsDcpsCoreTypeSupportImpl.h"
+#include "Domain.h"
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 
 namespace OpenDDS {
 namespace DCPS {
 
-BitPubListenerImpl::BitPubListenerImpl(DomainParticipantImpl* partipant)
-: partipant_ (partipant)
+BitPubListenerImpl::BitPubListenerImpl(DomainParticipantImpl* participant,
+				       Domain* domain)
+: participant_ (participant),
+  domain_ (domain)
 {
 }
 
@@ -54,12 +57,10 @@ void BitPubListenerImpl::on_data_available(DDS::DataReader_ptr reader)
       if (status == DDS::RETCODE_OK) {
         if (si.valid_data) {
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
-          Discovery_rch disc =
-            TheServiceParticipant->get_discovery(partipant_->get_domain_id());
           PublicationId pub_id =
-            disc->bit_key_to_repo_id(partipant_, BUILT_IN_PUBLICATION_TOPIC, data.key);
+            domain_->bit_key_to_repo_id(participant_, BUILT_IN_PUBLICATION_TOPIC, data.key);
           CORBA::Long const ownership_strength = data.ownership_strength.value;
-          this->partipant_->update_ownership_strength(pub_id, ownership_strength);
+          this->participant_->update_ownership_strength(pub_id, ownership_strength);
           if (DCPS_debug_level > 4) {
             GuidConverter writer_converter(pub_id);
             ACE_DEBUG((LM_DEBUG,

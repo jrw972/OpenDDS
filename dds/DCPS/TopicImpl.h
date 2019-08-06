@@ -23,6 +23,7 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class Domain;
 class TopicDescriptionImpl;
 class Monitor;
 
@@ -47,7 +48,8 @@ public:
             const DDS::TopicQos &          qos,
             DDS::TopicListener_ptr         a_listener,
             const DDS::StatusMask &        mask,
-            DomainParticipantImpl*         participant);
+            DomainParticipantImpl*         participant,
+	    Domain*                        domain);
 
   virtual ~TopicImpl();
 
@@ -100,6 +102,8 @@ private:
 
   /// Pointer to the monitor object for this entity
   Monitor* monitor_;
+
+  Domain* domain_;
 };
 
 

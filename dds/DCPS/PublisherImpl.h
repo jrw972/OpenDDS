@@ -47,7 +47,8 @@ public:
                 const DDS::PublisherQos& qos,
                 DDS::PublisherListener_ptr a_listener,
                 const DDS::StatusMask& mask,
-                DomainParticipantImpl* participant);
+                DomainParticipantImpl* participant,
+		Domain* domain);
 
   virtual ~PublisherImpl();
 
@@ -184,7 +185,7 @@ private:
   std::size_t                  change_depth_;
 #endif
   /// Domain in which we are contained.
-  DDS::DomainId_t              domain_id_;
+  Domain*                      domain_;
   /// The DomainParticipant servant that owns this Publisher.
   WeakRcHandle<DomainParticipantImpl>       participant_;
   /// The suspend depth count.

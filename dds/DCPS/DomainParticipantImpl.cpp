@@ -90,7 +90,7 @@ namespace DCPS {
 
 // Implementation skeleton constructor
 DomainParticipantImpl::DomainParticipantImpl(DomainParticipantFactoryImpl *     factory,
-                                             const DDS::DomainId_t&             domain_id,
+					     Domain*                            domain,
                                              const DDS::DomainParticipantQos &  qos,
                                              DDS::DomainParticipantListener_ptr a_listener,
                                              const DDS::StatusMask &            mask)
@@ -104,7 +104,7 @@ DomainParticipantImpl::DomainParticipantImpl(DomainParticipantFactoryImpl *     
     perm_handle_(DDS::HANDLE_NIL),
     part_crypto_handle_(DDS::HANDLE_NIL),
 #endif
-    domain_id_(domain_id),
+    domain_(domain),
     dp_id_(GUID_UNKNOWN),
     federated_(false),
     shutdown_condition_(shutdown_mutex_),
@@ -140,7 +140,8 @@ DomainParticipantImpl::create_publisher(
                                pub_qos,
                                a_listener,
                                mask,
-                               this),
+                               this,
+			       domain_),
                  DDS::Publisher::_nil());
 
   if ((enabled_ == true) && (qos_.entity_factory.autoenable_created_entities)) {
@@ -230,7 +231,8 @@ DomainParticipantImpl::create_subscriber(
                                 sub_qos,
                                 a_listener,
                                 mask,
-                                this),
+                                this,
+				domain_),
                  DDS::Subscriber::_nil());
 
   if ((enabled_ == true) && (qos_.entity_factory.autoenable_created_entities)) {
@@ -576,11 +578,10 @@ DomainParticipantImpl::delete_topic_i(
           0 == entry->client_refs_) {
         //TBD - mark the TopicImpl as deleted and make it
         //      reject calls to the TopicImpl.
-        Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
         TopicStatus status
-        = disco->remove_topic(the_dp_servant->get_domain_id(),
-                              the_dp_servant->get_id(),
-                              the_topic_servant->get_id());
+	  = domain_->remove_topic(
+				  the_dp_servant->get_id(),
+				  the_topic_servant->get_id());
 
         if (status != REMOVED) {
           ACE_ERROR_RETURN((LM_ERROR,
@@ -648,13 +649,12 @@ DomainParticipantImpl::find_topic(
     CORBA::String_var type_name;
     DDS::TopicQos_var qos;
 
-    Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-    TopicStatus status = disco->find_topic(domain_id_,
-                                           get_id(),
-                                           topic_name,
-                                           type_name.out(),
-                                           qos.out(),
-                                           topic_id);
+    TopicStatus status = domain_->find_topic(
+					     get_id(),
+					     topic_name,
+					     type_name.out(),
+					     qos.out(),
+					     topic_id);
 
 
     if (status == FOUND) {
@@ -985,9 +985,7 @@ DomainParticipantImpl::delete_contained_entities()
   // BIT subscriber and data readers will be deleted with the
   // rest of the entities, so need to report to discovery that
   // BIT is no longer available
-  Discovery_rch disc = TheServiceParticipant->get_discovery(this->domain_id_);
-  if (disc)
-    disc->fini_bit(this);
+  domain_->fini_bit(this);
 
   if (ACE_OS::thr_equal(TheServiceParticipant->reactor_owner(),
                         ACE_Thread::self())) {
@@ -1089,11 +1087,10 @@ DomainParticipantImpl::set_qos(
     } else {
       qos_ = qos;
 
-      Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
       const bool status =
-        disco->update_domain_participant_qos(domain_id_,
-                                             dp_id_,
-                                             qos_);
+        domain_->update_domain_participant_qos(
+					       dp_id_,
+					       qos_);
 
       if (!status) {
         ACE_ERROR_RETURN((LM_ERROR,
@@ -1167,10 +1164,9 @@ DomainParticipantImpl::ignore_participant(
                handle));
   }
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-  if (!disco->ignore_domain_participant(domain_id_,
-                                        dp_id_,
-                                        ignoreId)) {
+  if (!domain_->ignore_domain_participant(
+					  dp_id_,
+					  ignoreId)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_participant, ")
                       ACE_TEXT("Could not ignore domain participant.\n")),
@@ -1226,10 +1222,9 @@ DomainParticipantImpl::ignore_topic(
                handle));
   }
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-  if (!disco->ignore_topic(domain_id_,
-                           dp_id_,
-                           ignoreId)) {
+  if (!domain_->ignore_topic(
+			     dp_id_,
+			     ignoreId)) {
     ACE_ERROR((LM_ERROR,
                ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_topic, ")
                ACE_TEXT(" Could not ignore topic.\n")));
@@ -1265,10 +1260,9 @@ DomainParticipantImpl::ignore_publication(
   }
 
   RepoId ignoreId = get_repoid(handle);
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-  if (!disco->ignore_publication(domain_id_,
-                                 dp_id_,
-                                 ignoreId)) {
+  if (!domain_->ignore_publication(
+				   dp_id_,
+				   ignoreId)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_publication, ")
                       ACE_TEXT(" could not ignore publication in discovery. \n")),
@@ -1306,10 +1300,9 @@ DomainParticipantImpl::ignore_subscription(
 
 
   RepoId ignoreId = get_repoid(handle);
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-  if (!disco->ignore_subscription(domain_id_,
-                                  dp_id_,
-                                  ignoreId)) {
+  if (!domain_->ignore_subscription(
+				    dp_id_,
+				    ignoreId)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_subscription, ")
                       ACE_TEXT(" could not ignore subscription in discovery. \n")),
@@ -1326,7 +1319,7 @@ DomainParticipantImpl::ignore_subscription(
 DDS::DomainId_t
 DomainParticipantImpl::get_domain_id()
 {
-  return domain_id_;
+  return domain_->domain_id();
 }
 
 DDS::ReturnCode_t
@@ -1624,16 +1617,6 @@ DomainParticipantImpl::enable()
   }
 #endif
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-
-  if (disco.is_nil()) {
-    ACE_ERROR((LM_ERROR,
-               ACE_TEXT("(%P|%t) ERROR: ")
-               ACE_TEXT("DomainParticipantImpl::enable, ")
-               ACE_TEXT("no repository found for domain id: %d.\n"), domain_id_));
-    return DDS::RETCODE_ERROR;
-  }
-
 #ifdef OPENDDS_SECURITY
   if (TheServiceParticipant->get_security() && !security_config_) {
     ACE_ERROR((LM_ERROR,
@@ -1650,9 +1633,10 @@ DomainParticipantImpl::enable()
   if (TheServiceParticipant->get_security()) {
     Security::Authentication_var auth = security_config_->get_authentication();
 
+    DDS::DomainId_t domain_id = domain_->domain_id();
     DDS::Security::SecurityException se;
     DDS::Security::ValidationResult_t val_res =
-      auth->validate_local_identity(id_handle_, dp_id_, domain_id_, qos_, disco->generate_participant_guid(), se);
+      auth->validate_local_identity(id_handle_, dp_id_, domain_id, qos_, domain_->generate_participant_guid(), se);
 
     /* TODO - Handle VALIDATION_PENDING_RETRY */
     if (val_res != DDS::Security::VALIDATION_OK) {
@@ -1666,7 +1650,7 @@ DomainParticipantImpl::enable()
 
     Security::AccessControl_var access = security_config_->get_access_control();
 
-    perm_handle_ = access->validate_local_permissions(auth, id_handle_, domain_id_, qos_, se);
+    perm_handle_ = access->validate_local_permissions(auth, id_handle_, domain_id, qos_, se);
 
     if (perm_handle_ == DDS::HANDLE_NIL) {
       ACE_ERROR((LM_ERROR,
@@ -1677,7 +1661,7 @@ DomainParticipantImpl::enable()
       return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
     }
 
-    bool check_create = access->check_create_participant(perm_handle_, domain_id_, qos_, se);
+    bool check_create = access->check_create_participant(perm_handle_, domain_id, qos_, se);
     if (!check_create) {
       ACE_ERROR((LM_ERROR,
         ACE_TEXT("(%P|%t) ERROR: ")
@@ -1712,7 +1696,7 @@ DomainParticipantImpl::enable()
       return DDS::RETCODE_ERROR;
     }
 
-    value = disco->add_domain_participant_secure(domain_id_, qos_, dp_id_, id_handle_, perm_handle_, part_crypto_handle_);
+    value = domain_->add_domain_participant_secure(qos_, dp_id_, id_handle_, perm_handle_, part_crypto_handle_);
 
     if (value.id == GUID_UNKNOWN) {
       ACE_ERROR((LM_ERROR,
@@ -1725,7 +1709,7 @@ DomainParticipantImpl::enable()
   } else {
 #endif
 
-    value = disco->add_domain_participant(domain_id_, qos_);
+    value = domain_->add_domain_participant(qos_);
 
     if (value.id == GUID_UNKNOWN) {
       ACE_ERROR((LM_ERROR,
@@ -1755,12 +1739,11 @@ DomainParticipantImpl::enable()
   if (DCPS_debug_level > 1) {
     ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) DomainParticipantImpl::enable: ")
                ACE_TEXT("enabled participant %C in domain %d\n"),
-               OPENDDS_STRING(GuidConverter(dp_id_)).c_str(), domain_id_));
+               OPENDDS_STRING(GuidConverter(dp_id_)).c_str(), domain_->domain_id()));
   }
 
   if (ret == DDS::RETCODE_OK && !TheTransientKludge->is_enabled()) {
-    Discovery_rch disc = TheServiceParticipant->get_discovery(this->domain_id_);
-    this->bit_subscriber_ = disc->init_bit(this);
+    this->bit_subscriber_ = domain_->init_bit(this);
   }
 
   if (ret != DDS::RETCODE_OK) {
@@ -1877,7 +1860,7 @@ DomainParticipantImpl::create_new_topic(
     }
 
     if ((sec_attr.is_write_protected || sec_attr.is_read_protected) &&
-        !access->check_create_topic(perm_handle_, domain_id_, topic_name, qos, se)) {
+        !access->check_create_topic(perm_handle_, domain_->domain_id(), topic_name, qos, se)) {
       ACE_ERROR((LM_WARNING,
         ACE_TEXT("(%P|%t) WARNING: ")
         ACE_TEXT("DomainParticipantImpl::create_new_topic, ")
@@ -1897,7 +1880,8 @@ DomainParticipantImpl::create_new_topic(
                            qos,
                            a_listener,
                            mask,
-                           this),
+                           this,
+			   domain_),
                  DDS::Topic::_nil());
 
   if ((enabled_ == true)
@@ -1985,7 +1969,7 @@ DomainParticipantImpl::ownership_manager()
     DDS::DataReaderListener_var listener = bit_pub_dr->get_listener();
     if (CORBA::is_nil(listener.in())) {
       DDS::DataReaderListener_var bit_pub_listener =
-        new BitPubListenerImpl(this);
+        new BitPubListenerImpl(this, domain_);
       bit_pub_dr->set_listener(bit_pub_listener, DDS::DATA_AVAILABLE_STATUS);
       // Must call on_data_available when attaching a listener late - samples may be waiting
       bit_pub_listener->on_data_available(bit_pub_dr.in());
@@ -2105,7 +2089,7 @@ DomainParticipantImpl::create_recorder(DDS::Topic_ptr a_topic,
 
   recorder->init(dynamic_cast<TopicDescriptionImpl*>(a_topic),
     dr_qos, a_listener,
-    mask, this, subscriber_qos);
+		 mask, this, subscriber_qos, domain_);
 
   if ((enabled_ == true) && (qos_.entity_factory.autoenable_created_entities)) {
     recorder->enable();
@@ -2148,7 +2132,7 @@ DomainParticipantImpl::create_replayer(DDS::Topic_ptr a_topic,
   ReplayerImpl* replayer(new ReplayerImpl);
   Replayer_var result(replayer);
 
-  replayer->init(a_topic, topic_servant, dw_qos, a_listener, mask, this, pub_qos);
+  replayer->init(a_topic, topic_servant, dw_qos, a_listener, mask, this, pub_qos, domain_);
 
   if ((this->enabled_ == true) && (qos_.entity_factory.autoenable_created_entities)) {
     const DDS::ReturnCode_t ret = replayer->enable();
@@ -2342,7 +2326,7 @@ DomainParticipantImpl::participant_liveliness_activity_after(const ACE_Time_Valu
 void
 DomainParticipantImpl::signal_liveliness (DDS::LivelinessQosPolicyKind kind)
 {
-  TheServiceParticipant->get_discovery(domain_id_)->signal_liveliness (domain_id_, get_id(), kind);
+  domain_->signal_liveliness(get_id(), kind);
 }
 
 #ifdef OPENDDS_SECURITY

@@ -25,16 +25,18 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class Domain;
 class SubscriberImpl;
 
 class OpenDDS_Dcps_Export MultiTopicDataReaderBase
   : public virtual LocalObject<DataReaderEx> {
 public:
-  MultiTopicDataReaderBase() {}
+   MultiTopicDataReaderBase() {}
 
   void init(const DDS::DataReaderQos& dr_qos,
     DDS::DataReaderListener_ptr a_listener, DDS::StatusMask mask,
-    SubscriberImpl* parent, MultiTopicImpl* multitopic);
+	    SubscriberImpl* parent, MultiTopicImpl* multitopic,
+	    Domain* domain);
 
   void data_available(DDS::DataReader_ptr reader);
 

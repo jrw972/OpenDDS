@@ -26,6 +26,7 @@
 #include "RcEventHandler.h"
 #include "unique_ptr.h"
 #include "Message_Block_Ptr.h"
+#include "Domain.h"
 
 #ifndef OPENDDS_NO_CONTENT_FILTERED_TOPIC
 #include "FilterEvaluator.h"
@@ -204,7 +205,8 @@ public:
     DDS::DataWriterListener_ptr           a_listener,
     const DDS::StatusMask &               mask,
     WeakRcHandle<OpenDDS::DCPS::DomainParticipantImpl> participant_servant,
-    OpenDDS::DCPS::PublisherImpl*         publisher_servant);
+    OpenDDS::DCPS::PublisherImpl*         publisher_servant,
+    Domain*                               domain);
 
   void send_all_to_flush_control(ACE_Guard<ACE_Recursive_Thread_Mutex>& guard);
 
@@ -552,7 +554,7 @@ private:
   }
 
   DDS::DomainId_t domain_id() const {
-    return this->domain_id_;
+    return domain_->domain_id();
   }
 
   CORBA::Long get_priority_value(const AssociationData&) const {
@@ -584,7 +586,7 @@ private:
   /// Used to notify the entity for relevant events.
   DDS::DataWriterListener_var     listener_;
   /// The domain id.
-  DDS::DomainId_t                 domain_id_;
+  Domain*                         domain_;
   RepoId                          dp_id_;
   /// The publisher servant which creates this datawriter.
   WeakRcHandle<PublisherImpl>     publisher_servant_;

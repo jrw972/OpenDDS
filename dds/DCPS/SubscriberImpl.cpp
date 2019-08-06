@@ -44,13 +44,14 @@ SubscriberImpl::SubscriberImpl(DDS::InstanceHandle_t       handle,
                                const DDS::SubscriberQos &  qos,
                                DDS::SubscriberListener_ptr a_listener,
                                const DDS::StatusMask&      mask,
-                               DomainParticipantImpl*      participant)
+                               DomainParticipantImpl*      participant,
+			       Domain*                     domain)
   : handle_(handle),
   qos_(qos),
   default_datareader_qos_(TheServiceParticipant->initial_DataReaderQos()),
   listener_mask_(mask),
   participant_(*participant),
-  domain_id_(participant->get_domain_id()),
+  domain_(domain),
   raw_latency_buffer_size_(0),
   raw_latency_buffer_type_(DataCollector<double>::KeepOldest),
   monitor_(0),
@@ -157,7 +158,7 @@ SubscriberImpl::create_datareader(
         mt->get_type_support()->create_multitopic_datareader();
       MultiTopicDataReaderBase* mtdr =
         dynamic_cast<MultiTopicDataReaderBase*>(dr.in());
-      mtdr->init(dr_qos, a_listener, mask, this, mt);
+      mtdr->init(dr_qos, a_listener, mask, this, mt, domain_);
       if (enabled_.value() && qos_.entity_factory.autoenable_created_entities) {
         if (dr->enable() != DDS::RETCODE_OK) {
           ACE_ERROR((LM_ERROR,
@@ -224,7 +225,8 @@ SubscriberImpl::create_datareader(
                    a_listener,
                    mask,
                    participant.in(),
-                   this);
+                   this,
+		   domain_);
 
   if ((this->enabled_ == true) && (qos_.entity_factory.autoenable_created_entities)) {
     const DDS::ReturnCode_t ret = dr_servant->enable();
@@ -357,10 +359,9 @@ SubscriberImpl::delete_datareader(::DDS::DataReader_ptr a_datareader)
   }
 
   RepoId subscription_id = dr_servant->get_subscription_id();
-  Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-  if (!disco->remove_subscription(this->domain_id_,
-                                  this->dp_id_,
-                                  subscription_id)) {
+  if (!domain_->remove_subscription(
+				    this->dp_id_,
+				    subscription_id)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: ")
                       ACE_TEXT("SubscriberImpl::delete_datareader: ")
@@ -633,13 +634,12 @@ SubscriberImpl::set_qos(
       DrIdToQosMap::iterator iter = idToQosMap.begin();
 
       while (iter != idToQosMap.end()) {
-        Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
         const bool status
-          = disco->update_subscription_qos(this->domain_id_,
-                                           this->dp_id_,
-                                           iter->first,
-                                           iter->second,
-                                           this->qos_);
+          = domain_->update_subscription_qos(
+					     this->dp_id_,
+					     iter->first,
+					     iter->second,
+					     this->qos_);
 
         if (!status) {
           ACE_ERROR_RETURN((LM_ERROR,

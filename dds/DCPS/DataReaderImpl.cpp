@@ -61,7 +61,7 @@ DataReaderImpl::DataReaderImpl()
   subqos_ (TheServiceParticipant->initial_SubscriberQos()),
   topic_desc_(0),
   listener_mask_(DEFAULT_STATUS_MASK),
-  domain_id_(0),
+  domain_(0),
   end_historic_sweeper_(make_rch<EndHistoricSamplesMissedSweeper>(TheServiceParticipant->reactor(), TheServiceParticipant->reactor_owner(), this)),
   remove_association_sweeper_(make_rch<RemoveAssociationSweeper<DataReaderImpl> >(TheServiceParticipant->reactor(), TheServiceParticipant->reactor_owner(), this)),
   n_chunks_(TheServiceParticipant->n_chunks()),
@@ -162,7 +162,8 @@ void DataReaderImpl::init(
     DDS::DataReaderListener_ptr a_listener,
     const DDS::StatusMask & mask,
     DomainParticipantImpl* participant,
-    SubscriberImpl* subscriber)
+    SubscriberImpl* subscriber,
+    Domain* domain)
 {
   topic_desc_ = DDS::TopicDescription::_duplicate(a_topic_desc);
   if (TopicImpl* a_topic = dynamic_cast<TopicImpl*>(a_topic_desc)) {
@@ -191,7 +192,7 @@ void DataReaderImpl::init(
   // parent, we will exist as long as it does
   participant_servant_ = *participant;
 
-  domain_id_ = participant->get_domain_id();
+  domain_ = domain;
 
   subscriber_servant_ = *subscriber;
 
@@ -434,10 +435,8 @@ DataReaderImpl::transport_assoc_done(int flags, const RepoId& remote_id)
   }
 
   if (!active) {
-    Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-
-    disco->association_complete(domain_id_, dp_id_,
-        subscription_id_, remote_id);
+    domain_->association_complete(dp_id_,
+				  subscription_id_, remote_id);
   }
 
   if (monitor_) {
@@ -863,7 +862,6 @@ DDS::ReturnCode_t DataReaderImpl::set_qos(
         return DDS::RETCODE_IMMUTABLE_POLICY;
 
       } else {
-        Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
         DDS::SubscriberQos subscriberQos;
 
         RcHandle<SubscriberImpl> subscriber = get_subscriber_servant();
@@ -871,12 +869,11 @@ DDS::ReturnCode_t DataReaderImpl::set_qos(
         if (subscriber) {
           subscriber->get_qos(subscriberQos);
           status =
-            disco->update_subscription_qos(
-              domain_id_,
-              dp_id_,
-              this->subscription_id_,
-              qos,
-              subscriberQos);
+            domain_->update_subscription_qos(
+					     dp_id_,
+					     this->subscription_id_,
+					     qos,
+					     subscriberQos);
         }
         if (!status) {
           ACE_ERROR_RETURN((LM_ERROR,
@@ -1226,8 +1223,7 @@ DataReaderImpl::enable()
             ref(this->last_deadline_missed_total_count_));
   }
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-  disco->pre_reader(this);
+  domain_->pre_reader(this);
 
   this->set_enabled();
 
@@ -1263,16 +1259,16 @@ DataReaderImpl::enable()
     subscriber->get_qos(sub_qos);
 
     this->subscription_id_ =
-        disco->add_subscription(this->domain_id_,
-            this->dp_id_,
-            this->topic_servant_->get_id(),
-            this,
-            this->qos_,
-            trans_conf_info,
-            sub_qos,
-            filterClassName,
-            filterExpression,
-            exprParams);
+      domain_->add_subscription(
+				this->dp_id_,
+				this->topic_servant_->get_id(),
+				this,
+				this->qos_,
+				trans_conf_info,
+				sub_qos,
+				filterClassName,
+				filterExpression,
+				exprParams);
 
     if (this->subscription_id_ == OpenDDS::DCPS::GUID_UNKNOWN) {
       ACE_ERROR((LM_WARNING,
@@ -2449,10 +2445,9 @@ DataReaderImpl::get_next_handle(const DDS::BuiltinTopicKey_t& key)
     return DDS::HANDLE_NIL;
 
   if (is_bit()) {
-    Discovery_rch disc = TheServiceParticipant->get_discovery(domain_id_);
     CORBA::String_var topic = topic_servant_->get_name();
 
-    RepoId id = disc->bit_key_to_repo_id(participant.in(), topic, key);
+    RepoId id = domain_->bit_key_to_repo_id(participant.in(), topic, key);
     return participant->id_to_handle(id);
 
   } else {
@@ -3162,11 +3157,10 @@ DataReaderImpl::enable_multi_topic(MultiTopicImpl* mt)
 void
 DataReaderImpl::update_subscription_params(const DDS::StringSeq& params) const
 {
-  Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
-  disco->update_subscription_params(domain_id_,
-      dp_id_,
-      subscription_id_,
-      params);
+  domain_->update_subscription_params(
+				      dp_id_,
+				      subscription_id_,
+				      params);
 }
 #endif
 

@@ -58,7 +58,7 @@ ReplayerImpl::ReplayerImpl()
   topic_id_(GUID_UNKNOWN),
   topic_servant_(0),
   listener_mask_(DEFAULT_STATUS_MASK),
-  domain_id_(0),
+  domain_(0),
   publisher_servant_(0),
   publication_id_(GUID_UNKNOWN),
   sequence_number_(SequenceNumber::SEQUENCENUMBER_UNKNOWN()),
@@ -128,9 +128,7 @@ ReplayerImpl::cleanup()
   // not just unregister but remove any pending writes/sends.
   // this->unregister_all();
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-  if (!disco->remove_publication(
-        this->domain_id_,
+  if (!domain_->remove_publication(
         this->participant_servant_->get_id(),
         this->publication_id_)) {
     ACE_ERROR_RETURN((LM_ERROR,
@@ -150,7 +148,8 @@ ReplayerImpl::init(
   ReplayerListener_rch                   a_listener,
   const DDS::StatusMask &                mask,
   OpenDDS::DCPS::DomainParticipantImpl * participant_servant,
-  const DDS::PublisherQos&               publisher_qos)
+  const DDS::PublisherQos&               publisher_qos,
+  Domain*                                domain)
 {
   DBG_ENTRY_LVL("ReplayerImpl","init",6);
   topic_objref_ = DDS::Topic::_duplicate(topic);
@@ -172,7 +171,7 @@ ReplayerImpl::init(
   // Only store the participant pointer, since it is our "grand"
   // parent, we will exist as long as it does.
   participant_servant_ = participant_servant;
-  domain_id_ = participant_servant_->get_domain_id();
+  domain_ = domain;
 
   publisher_qos_ = publisher_qos;
 }
@@ -213,16 +212,15 @@ DDS::ReturnCode_t ReplayerImpl::set_qos (const DDS::PublisherQos &  publisher_qo
       return DDS::RETCODE_IMMUTABLE_POLICY;
 
     } else {
-      Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
       // DDS::PublisherQos publisherQos;
       // this->publisher_servant_->get_qos(publisherQos);
       DDS::PublisherQos publisherQos = this->publisher_qos_;
       const bool status
-        = disco->update_publication_qos(this->participant_servant_->get_domain_id(),
-                                        this->participant_servant_->get_id(),
-                                        this->publication_id_,
-                                        qos,
-                                        publisherQos);
+        = domain_->update_publication_qos(
+					  this->participant_servant_->get_id(),
+					  this->publication_id_,
+					  qos,
+					  publisherQos);
 
       if (!status) {
         ACE_ERROR_RETURN((LM_ERROR,
@@ -359,15 +357,14 @@ ReplayerImpl::enable()
   const TransportLocatorSeq& trans_conf_info = connection_info();
 
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
   this->publication_id_ =
-    disco->add_publication(this->domain_id_,
-                           this->participant_servant_->get_id(),
-                           this->topic_servant_->get_id(),
-                           this,
-                           this->qos_,
-                           trans_conf_info,
-                           this->publisher_qos_);
+    domain_->add_publication(
+			     this->participant_servant_->get_id(),
+			     this->topic_servant_->get_id(),
+			     this,
+			     this->qos_,
+			     trans_conf_info,
+			     this->publisher_qos_);
 
   if (this->publication_id_ == GUID_UNKNOWN) {
     ACE_ERROR((LM_ERROR,
@@ -476,10 +473,9 @@ ReplayerImpl::add_association(const RepoId&            yourId,
   } else {
     // In the current implementation, DataWriter is always active, so this
     // code will not be applicable.
-    Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-    disco->association_complete(this->domain_id_,
-                                this->participant_servant_->get_id(),
-                                this->publication_id_, reader.readerId);
+    domain_->association_complete(
+				  this->participant_servant_->get_id(),
+				  this->publication_id_, reader.readerId);
   }
 }
 

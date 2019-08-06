@@ -32,7 +32,8 @@ PublisherImpl::PublisherImpl(DDS::InstanceHandle_t      handle,
     const DDS::PublisherQos&   qos,
     DDS::PublisherListener_ptr a_listener,
     const DDS::StatusMask&     mask,
-    DomainParticipantImpl*     participant)
+    DomainParticipantImpl*     participant,
+    Domain*                    domain)
 : handle_(handle),
   qos_(qos),
   default_datawriter_qos_(TheServiceParticipant->initial_DataWriterQos()),
@@ -41,7 +42,7 @@ PublisherImpl::PublisherImpl(DDS::InstanceHandle_t      handle,
 #ifndef OPENDDS_NO_OBJECT_MODEL_PROFILE
   change_depth_(0),
 #endif
-  domain_id_(participant->get_domain_id()),
+  domain_(domain),
   participant_(*participant),
   suspend_depth_count_(0),
   sequence_number_(),
@@ -147,7 +148,8 @@ PublisherImpl::create_datawriter(
       a_listener,
       mask,
       participant_,
-      this);
+      this,
+      domain_);
 
   if ((this->enabled_ == true) && (qos_.entity_factory.autoenable_created_entities)) {
     const DDS::ReturnCode_t ret = dw_servant->enable();
@@ -285,11 +287,9 @@ PublisherImpl::delete_datawriter(DDS::DataWriter_ptr a_datawriter)
 
   RcHandle<DomainParticipantImpl> participant = this->participant_.lock();
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-  if (!disco->remove_publication(
-      this->domain_id_,
-      participant->get_id(),
-      publication_id)) {
+  if (!domain_->remove_publication(
+				   participant->get_id(),
+				   publication_id)) {
     ACE_ERROR_RETURN((LM_ERROR,
         ACE_TEXT("(%P|%t) ERROR: ")
         ACE_TEXT("PublisherImpl::delete_datawriter, ")
@@ -422,17 +422,15 @@ PublisherImpl::set_qos(const DDS::PublisherQos & qos)
       DwIdToQosMap::iterator iter = idToQosMap.begin();
 
       while (iter != idToQosMap.end()) {
-        Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
         bool status = false;
 
         RcHandle<DomainParticipantImpl> participant = this->participant_.lock();
         if (participant)
-          status = disco->update_publication_qos(
-              participant->get_domain_id(),
-              participant->get_id(),
-              iter->first,
-              iter->second,
-              this->qos_);
+          status = domain_->update_publication_qos(
+						   participant->get_id(),
+						   iter->first,
+						   iter->second,
+						   this->qos_);
 
         if (!status) {
           ACE_ERROR_RETURN((LM_ERROR,

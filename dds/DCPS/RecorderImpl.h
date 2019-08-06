@@ -21,6 +21,7 @@
 #include "dds/DCPS/transport/framework/TransportClient.h"
 #include "Recorder.h"
 #include "RemoveAssociationSweeper.h"
+#include "Domain.h"
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 
@@ -61,14 +62,15 @@ public:
     RecorderListener_rch       a_listener,
     const DDS::StatusMask &    mask,
     DomainParticipantImpl*     participant,
-    DDS::SubscriberQos         subqos);
+    DDS::SubscriberQos         subqos,
+    Domain*                    domain);
 
   DDS::ReturnCode_t enable();
 
   // Implement TransportClient
   virtual bool check_transport_qos(const TransportInst& inst);
   virtual const RepoId& get_repo_id() const;
-  DDS::DomainId_t domain_id() const { return this->domain_id_; }
+  DDS::DomainId_t domain_id() const { return domain_->domain_id(); }
   virtual CORBA::Long get_priority_value(const AssociationData& data) const;
 
   //Implement TransportReceiveListener
@@ -171,7 +173,7 @@ private:
   DDS::TopicDescription_var topic_desc_;
   DDS::StatusMask listener_mask_;
   RecorderListener_rch listener_;
-  DDS::DomainId_t domain_id_;
+  Domain* domain_;
   RcHandle<RemoveAssociationSweeper<RecorderImpl> > remove_association_sweeper_;
 
   ACE_Recursive_Thread_Mutex publication_handle_lock_;

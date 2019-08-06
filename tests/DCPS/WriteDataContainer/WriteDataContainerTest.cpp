@@ -50,7 +50,7 @@ class TestParticipantImpl : public DomainParticipantImpl
 public:
   TestParticipantImpl()
     : DomainParticipantImpl(0,
-                            MY_DOMAIN,
+                            0,
                             PARTICIPANT_QOS_DEFAULT,
                             ::DDS::DomainParticipantListener::_nil(),
                             ::OpenDDS::DCPS::DEFAULT_STATUS_MASK) {};

@@ -14,6 +14,7 @@
 #include "DomainParticipantImpl.h"
 #include "MonitorFactory.h"
 #include "dds/DCPS/transport/framework/TransportExceptions.h"
+#include "Domain.h"
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 
@@ -26,7 +27,8 @@ TopicImpl::TopicImpl(const char*                    topic_name,
                      const DDS::TopicQos &          qos,
                      DDS::TopicListener_ptr         a_listener,
                      const DDS::StatusMask &        mask,
-                     DomainParticipantImpl*         participant)
+                     DomainParticipantImpl*         participant,
+		     Domain*                        domain)
   : TopicDescriptionImpl(topic_name,
                          type_name,
                          type_support,
@@ -35,7 +37,8 @@ TopicImpl::TopicImpl(const char*                    topic_name,
     listener_mask_(mask),
     listener_(DDS::TopicListener::_duplicate(a_listener)),
     id_(GUID_UNKNOWN),
-    monitor_(0)
+    monitor_(0),
+    domain_(domain)
 {
   inconsistent_topic_status_.total_count = 0;
   inconsistent_topic_status_.total_count_change = 0;
@@ -67,11 +70,9 @@ TopicImpl::set_qos(const DDS::TopicQos & qos)
     } else {
       qos_ = qos;
 
-      Discovery_rch disco =
-        TheServiceParticipant->get_discovery(participant_->get_domain_id());
       const bool status =
-        disco->update_topic_qos(this->id_, participant_->get_domain_id(),
-                               participant_->get_id(), qos_);
+        domain_->update_topic_qos(this->id_,
+				  participant_->get_id(), qos_);
 
       if (!status) {
         ACE_ERROR_RETURN((LM_ERROR,
@@ -137,16 +138,13 @@ TopicImpl::enable()
   }
 
   if (id_ == GUID_UNKNOWN) {
-    const DDS::DomainId_t dom_id = participant_->get_domain_id();
-    Discovery_rch disco = TheServiceParticipant->get_discovery(dom_id);
-    TopicStatus status = disco->assert_topic(id_,
-                                             dom_id,
-                                             participant_->get_id(),
-                                             topic_name_.c_str(),
-                                             type_name_.c_str(),
-                                             qos_,
-                                             type_support_ ? type_support_->has_dcps_key() : false,
-                                             this);
+    TopicStatus status = domain_->assert_topic(id_,
+					       participant_->get_id(),
+					       topic_name_.c_str(),
+					       type_name_.c_str(),
+					       qos_,
+					       type_support_ ? type_support_->has_dcps_key() : false,
+					       this);
     if (status != CREATED && status != FOUND) {
       if (DCPS_debug_level >= 1) {
         ACE_ERROR((LM_ERROR,

@@ -23,12 +23,14 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class Domain;
 class DomainParticipantImpl;
 
 class BitPubListenerImpl
   : public virtual OpenDDS::DCPS::LocalObject<DDS::DataReaderListener> {
 public:
-  BitPubListenerImpl(DomainParticipantImpl* partipant);
+  BitPubListenerImpl(DomainParticipantImpl* participant,
+		     Domain* domain);
 
   virtual ~BitPubListenerImpl();
 
@@ -60,8 +62,8 @@ public:
     const DDS::SampleLostStatus& status);
 
 private:
-  DomainParticipantImpl* partipant_;
-
+  DomainParticipantImpl* participant_;
+  Domain* domain_;
 };
 
 } // namespace DCPS

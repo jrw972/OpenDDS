@@ -23,6 +23,7 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class Domain;
 class DomainParticipantImpl;
 
 /**
@@ -81,6 +82,8 @@ public:
 
 private:
 
+  Domain* get_domain(const DDS::DomainId_t domain_id);
+
   DDS::DomainParticipantFactoryQos qos_;
 
   /// The default qos value of DomainParticipant.
@@ -93,6 +96,9 @@ private:
   /// Use recursive mutex to allow nested acquisition and
   /// release of a mutex that occurs in the same thread.
   ACE_Recursive_Thread_Mutex  participants_protector_;
+
+  typedef OPENDDS_MAP(DDS::DomainId_t, Domain*) DomainMap;
+  DomainMap domain_map_;
 };
 
 } // namespace DCPS

@@ -21,6 +21,7 @@
 #include "CoherentChangeControl.h"
 #include "GuidUtils.h"
 #include "unique_ptr.h"
+#include "Domain.h"
 
 #ifndef OPENDDS_NO_CONTENT_SUBSCRIPTION_PROFILE
 #include "FilterEvaluator.h"
@@ -84,7 +85,8 @@ public:
     ReplayerListener_rch                  a_listener,
     const DDS::StatusMask &               mask,
     OpenDDS::DCPS::DomainParticipantImpl* participant_servant,
-    const DDS::PublisherQos&              publisher_qos);
+    const DDS::PublisherQos&              publisher_qos,
+    Domain*                               domain);
 
 
   // implement Replayer
@@ -105,7 +107,7 @@ public:
   // Implement TransportClient
   virtual bool check_transport_qos(const TransportInst& inst);
   virtual const RepoId& get_repo_id() const;
-  DDS::DomainId_t domain_id() const { return this->domain_id_; }
+  DDS::DomainId_t domain_id() const { return domain_->domain_id(); }
   virtual CORBA::Long get_priority_value(const AssociationData& data) const;
 
   // Implement TransportSendListener
@@ -227,8 +229,7 @@ private:
   DDS::StatusMask listener_mask_;
   /// Used to notify the entity for relevant events.
   ReplayerListener_rch listener_;
-  /// The domain id.
-  DDS::DomainId_t domain_id_;
+  Domain* domain_;
   /// The publisher servant which creates this datawriter.
   PublisherImpl*                  publisher_servant_;
   DDS::PublisherQos publisher_qos_;

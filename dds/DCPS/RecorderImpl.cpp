@@ -59,7 +59,7 @@ RecorderImpl::RecorderImpl()
   subqos_ (TheServiceParticipant->initial_SubscriberQos()),
   topic_desc_(0),
   listener_mask_(DEFAULT_STATUS_MASK),
-  domain_id_(0),
+  domain_(0),
   remove_association_sweeper_(
     make_rch<RemoveAssociationSweeper<RecorderImpl> >(TheServiceParticipant->reactor(),
                                          TheServiceParticipant->reactor_owner(),
@@ -105,10 +105,9 @@ DDS::ReturnCode_t
 RecorderImpl::cleanup()
 {
 
-  Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-  if (!disco->remove_subscription(this->domain_id_,
-                                  participant_servant_->get_id(),
-                                  this->subscription_id_)) {
+  if (!domain_->remove_subscription(
+				    participant_servant_->get_id(),
+				    this->subscription_id_)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: ")
                       ACE_TEXT("RecorderImpl::cleanup: ")
@@ -143,7 +142,8 @@ void RecorderImpl::init(
   RecorderListener_rch       a_listener,
   const DDS::StatusMask &    mask,
   DomainParticipantImpl*     participant,
-  DDS::SubscriberQos         subqos)
+  DDS::SubscriberQos         subqos,
+  Domain*                    domain)
 {
   //
   if (DCPS_debug_level >= 1) {
@@ -184,7 +184,7 @@ void RecorderImpl::init(
   }
 #endif
 
-  domain_id_ = participant_servant_->get_domain_id();
+  domain_ = domain;
   subqos_ = subqos;
 }
 
@@ -496,10 +496,9 @@ RecorderImpl::add_association(const RepoId&            yourId,
   }
 
   if (!active) {
-    Discovery_rch disco = TheServiceParticipant->get_discovery(this->domain_id_);
-    disco->association_complete(this->domain_id_,
-                                this->participant_servant_->get_id(),
-                                this->subscription_id_, writer.writerId);
+    domain_->association_complete(
+				  this->participant_servant_->get_id(),
+				  this->subscription_id_, writer.writerId);
   }
 
   // if (this->monitor_) {
@@ -852,14 +851,12 @@ DDS::ReturnCode_t RecorderImpl::set_qos(
       return DDS::RETCODE_IMMUTABLE_POLICY;
 
     } else {
-      Discovery_rch disco = TheServiceParticipant->get_discovery(domain_id_);
       const bool status =
-        disco->update_subscription_qos(
-          this->participant_servant_->get_domain_id(),
-          this->participant_servant_->get_id(),
-          this->subscription_id_,
-          qos,
-          subscriber_qos);
+        domain_->update_subscription_qos(
+					 this->participant_servant_->get_id(),
+					 this->subscription_id_,
+					 qos,
+					 subscriber_qos);
       if (!status) {
         ACE_ERROR_RETURN((LM_ERROR,
                           ACE_TEXT("(%P|%t) RecorderImpl::set_qos, ")
@@ -974,23 +971,20 @@ RecorderImpl::enable()
     CORBA::String_var filterExpression = "";
     DDS::StringSeq exprParams;
 
-    Discovery_rch disco =
-      TheServiceParticipant->get_discovery(this->domain_id_);
-
     ACE_DEBUG((LM_DEBUG,
                ACE_TEXT("(%P|%t) RecorderImpl::add_subscription\n")));
 
     this->subscription_id_ =
-      disco->add_subscription(this->domain_id_,
-                              this->participant_servant_->get_id(),
-                              this->topic_servant_->get_id(),
-                              this,
-                              this->qos_,
-                              trans_conf_info,
-                              this->subqos_,
-                              filterClassName,
-                              filterExpression,
-                              exprParams);
+      domain_->add_subscription(
+				this->participant_servant_->get_id(),
+				this->topic_servant_->get_id(),
+				this,
+				this->qos_,
+				trans_conf_info,
+				this->subqos_,
+				filterClassName,
+				filterExpression,
+				exprParams);
 
     if (this->subscription_id_ == OpenDDS::DCPS::GUID_UNKNOWN) {
       ACE_ERROR((LM_ERROR,

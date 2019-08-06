@@ -70,7 +70,7 @@ public:
   /// @Returns true if the operation succeeds
   bool set_ORB(CORBA::ORB_ptr orb);
 
-  virtual DDS::Subscriber_ptr init_bit(DomainParticipantImpl* participant);
+  virtual DDS::Subscriber_ptr init_bit(DomainParticipantImpl* participant, Domain* domain);
 
   virtual void fini_bit(DCPS::DomainParticipantImpl* participant);
 

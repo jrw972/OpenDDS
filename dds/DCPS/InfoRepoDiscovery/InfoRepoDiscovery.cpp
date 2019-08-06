@@ -295,7 +295,7 @@ InfoRepoDiscovery::bit_config()
 }
 
 DDS::Subscriber_ptr
-InfoRepoDiscovery::init_bit(DomainParticipantImpl* participant)
+InfoRepoDiscovery::init_bit(DomainParticipantImpl* participant, Domain* /*domain*/)
 {
 #if defined (DDS_HAS_MINIMUM_BIT)
   ACE_UNUSED_ARG(participant);

@@ -42,7 +42,8 @@ public:
                  const DDS::SubscriberQos& qos,
                  DDS::SubscriberListener_ptr a_listener,
                  const DDS::StatusMask& mask,
-                 DomainParticipantImpl* participant);
+                 DomainParticipantImpl* participant,
+		 Domain* domain);
 
   virtual ~SubscriberImpl();
 
@@ -192,7 +193,7 @@ private:
 
   WeakRcHandle<DomainParticipantImpl> participant_;
 
-  DDS::DomainId_t              domain_id_;
+  Domain*                      domain_;
   RepoId                       dp_id_;
 
   /// Bound (or initial reservation) of raw latency buffers.
