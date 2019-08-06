@@ -84,12 +84,12 @@ public:
 
   virtual OpenDDS::DCPS::RepoId generate_participant_guid();
 
-  virtual OpenDDS::DCPS::AddDomainStatus add_domain_participant(
+  virtual OpenDDS::DCPS::RepoId add_domain_participant(
     DDS::DomainId_t domain,
     const DDS::DomainParticipantQos& qos);
 
 #if defined(OPENDDS_SECURITY)
-  virtual OpenDDS::DCPS::AddDomainStatus add_domain_participant_secure(
+  virtual OpenDDS::DCPS::RepoId add_domain_participant_secure(
     DDS::DomainId_t domain,
     const DDS::DomainParticipantQos& qos,
     const OpenDDS::DCPS::RepoId& guid,
@@ -271,6 +271,8 @@ private:
   DataWriterMap dataWriterMap_;
 
   mutable ACE_Thread_Mutex lock_;
+
+  bool federated_;
 
 public:
   class Config : public Discovery::Config {

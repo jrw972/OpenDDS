@@ -92,12 +92,12 @@ public:
 
   virtual OpenDDS::DCPS::RepoId generate_participant_guid() = 0;
 
-  virtual AddDomainStatus add_domain_participant(
+  virtual RepoId add_domain_participant(
     DDS::DomainId_t domain,
     const DDS::DomainParticipantQos& qos) = 0;
 
 #if defined(OPENDDS_SECURITY)
-  virtual OpenDDS::DCPS::AddDomainStatus add_domain_participant_secure(
+  virtual RepoId add_domain_participant_secure(
     DDS::DomainId_t domain,
     const DDS::DomainParticipantQos& qos,
     const OpenDDS::DCPS::RepoId& guid,

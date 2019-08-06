@@ -106,7 +106,6 @@ DomainParticipantImpl::DomainParticipantImpl(DomainParticipantFactoryImpl *     
 #endif
     domain_(domain),
     dp_id_(GUID_UNKNOWN),
-    federated_(false),
     shutdown_condition_(shutdown_mutex_),
     shutdown_complete_(false),
     monitor_(0),
@@ -1627,7 +1626,7 @@ DomainParticipantImpl::enable()
   }
 #endif
 
-  AddDomainStatus value = {GUID_UNKNOWN, false};
+  RepoId id = GUID_UNKNOWN;
 
 #ifdef OPENDDS_SECURITY
   if (TheServiceParticipant->get_security()) {
@@ -1696,9 +1695,9 @@ DomainParticipantImpl::enable()
       return DDS::RETCODE_ERROR;
     }
 
-    value = domain_->add_domain_participant_secure(qos_, dp_id_, id_handle_, perm_handle_, part_crypto_handle_);
+    id = domain_->add_domain_participant_secure(qos_, dp_id_, id_handle_, perm_handle_, part_crypto_handle_);
 
-    if (value.id == GUID_UNKNOWN) {
+    if (id == GUID_UNKNOWN) {
       ACE_ERROR((LM_ERROR,
                  ACE_TEXT("(%P|%t) ERROR: ")
                  ACE_TEXT("DomainParticipantImpl::enable, ")
@@ -1709,9 +1708,9 @@ DomainParticipantImpl::enable()
   } else {
 #endif
 
-    value = domain_->add_domain_participant(qos_);
+    id = domain_->add_domain_participant(qos_);
 
-    if (value.id == GUID_UNKNOWN) {
+    if (id == GUID_UNKNOWN) {
       ACE_ERROR((LM_ERROR,
                  ACE_TEXT("(%P|%t) ERROR: ")
                  ACE_TEXT("DomainParticipantImpl::enable, ")
@@ -1723,8 +1722,7 @@ DomainParticipantImpl::enable()
   }
 #endif
 
-  dp_id_ = value.id;
-  federated_ = value.federated;
+  dp_id_ = id;
 
   if (monitor_) {
     monitor_->report();

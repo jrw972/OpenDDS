@@ -338,11 +338,6 @@ public:
 
 #endif
 
-  bool federated() const {
-    return this->federated_;
-  }
-
-
   Recorder_ptr create_recorder(DDS::Topic_ptr               a_topic,
                                const DDS::SubscriberQos &   subscriber_qos,
                                const DDS::DataReaderQos &   datareader_qos,
@@ -442,10 +437,6 @@ private:
   Domain* domain_;
   /// This participant id given by discovery.
   RepoId dp_id_;
-
-  /// Whether this DomainParticipant is attached to a federated
-  /// repository.
-  bool federated_;
 
   /// Collection of publishers.
   PublisherSet publishers_;

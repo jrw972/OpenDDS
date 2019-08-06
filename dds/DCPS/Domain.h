@@ -28,18 +28,17 @@ class DiscoveryI {
   // Participant
   virtual RepoId generate_participant_guid() = 0;
 
-  // TODO(jrw972): Remove AddDomainStatus.
-  virtual AddDomainStatus add_domain_participant(const DDS::DomainId_t domain_id,
-                                                 const DDS::DomainParticipantQos& qos) = 0;
+  virtual RepoId add_domain_participant(const DDS::DomainId_t domain_id,
+                                        const DDS::DomainParticipantQos& qos) = 0;
 
 #if defined(OPENDDS_SECURITY)
   // TODO(jrw972): Remove conditional declaration.
-  virtual AddDomainStatus add_domain_participant_secure(const DDS::DomainId_t domain_id,
-                                                        const DDS::DomainParticipantQos& qos,
-                                                        const OpenDDS::DCPS::RepoId& guid,
-                                                        DDS::Security::IdentityHandle id,
-                                                        DDS::Security::PermissionsHandle perm,
-                                                        DDS::Security::ParticipantCryptoHandle part_crypto) = 0;
+  virtual RepoId add_domain_participant_secure(const DDS::DomainId_t domain_id,
+                                               const DDS::DomainParticipantQos& qos,
+                                               const RepoId& guid,
+                                               DDS::Security::IdentityHandle id,
+                                               DDS::Security::PermissionsHandle perm,
+                                               DDS::Security::ParticipantCryptoHandle part_crypto) = 0;
 #endif
 
   virtual bool update_domain_participant_qos(const DDS::DomainId_t domain_id,
@@ -179,16 +178,16 @@ public:
   // Participant
   RepoId generate_participant_guid() override;
 
-  AddDomainStatus add_domain_participant(const DDS::DomainId_t domain_id,
-                                         const DDS::DomainParticipantQos& qos) override;
+  RepoId add_domain_participant(const DDS::DomainId_t domain_id,
+                                const DDS::DomainParticipantQos& qos) override;
 
 #if defined(OPENDDS_SECURITY)
-  AddDomainStatus add_domain_participant_secure(const DDS::DomainId_t domain_id,
-						const DDS::DomainParticipantQos& qos,
-						const OpenDDS::DCPS::RepoId& guid,
-						DDS::Security::IdentityHandle id,
-						DDS::Security::PermissionsHandle perm,
-						DDS::Security::ParticipantCryptoHandle part_crypto) override;
+  RepoId add_domain_participant_secure(const DDS::DomainId_t domain_id,
+                                       const DDS::DomainParticipantQos& qos,
+                                       const OpenDDS::DCPS::RepoId& guid,
+                                       DDS::Security::IdentityHandle id,
+                                       DDS::Security::PermissionsHandle perm,
+                                       DDS::Security::ParticipantCryptoHandle part_crypto) override;
 #endif
 
   bool update_domain_participant_qos(const DDS::DomainId_t domain_id,
@@ -332,15 +331,15 @@ public:
   // Participant
   RepoId generate_participant_guid();
 
-  AddDomainStatus add_domain_participant(const DDS::DomainParticipantQos& qos);
+  RepoId add_domain_participant(const DDS::DomainParticipantQos& qos);
 
 #if defined(OPENDDS_SECURITY)
-  AddDomainStatus add_domain_participant_secure(
-						const DDS::DomainParticipantQos& qos,
-						const OpenDDS::DCPS::RepoId& guid,
-						DDS::Security::IdentityHandle id,
-						DDS::Security::PermissionsHandle perm,
-						DDS::Security::ParticipantCryptoHandle part_crypto);
+  RepoId add_domain_participant_secure(
+                                       const DDS::DomainParticipantQos& qos,
+                                       const RepoId& guid,
+                                       DDS::Security::IdentityHandle id,
+                                       DDS::Security::PermissionsHandle perm,
+                                       DDS::Security::ParticipantCryptoHandle part_crypto);
 #endif
 
   bool update_domain_participant_qos(const RepoId& participant_id,

@@ -172,18 +172,18 @@ OpenDDS::DCPS::RepoId LegacyDiscovery::generate_participant_guid() {
   return discovery_->generate_participant_guid();
 }
 
-AddDomainStatus LegacyDiscovery::add_domain_participant(const DDS::DomainId_t domain_id,
-                                                        const DDS::DomainParticipantQos& qos) {
+RepoId LegacyDiscovery::add_domain_participant(const DDS::DomainId_t domain_id,
+                                               const DDS::DomainParticipantQos& qos) {
   return discovery_->add_domain_participant(domain_id, qos);
 }
 
 #if defined(OPENDDS_SECURITY)
-AddDomainStatus LegacyDiscovery::add_domain_participant_secure(const DDS::DomainId_t domain_id,
-                                                               const DDS::DomainParticipantQos& qos,
-                                                               const OpenDDS::DCPS::RepoId& guid,
-                                                               DDS::Security::IdentityHandle id,
-                                                               DDS::Security::PermissionsHandle perm,
-                                                               DDS::Security::ParticipantCryptoHandle part_crypto) {
+RepoId LegacyDiscovery::add_domain_participant_secure(const DDS::DomainId_t domain_id,
+                                                      const DDS::DomainParticipantQos& qos,
+                                                      const RepoId& guid,
+                                                      DDS::Security::IdentityHandle id,
+                                                      DDS::Security::PermissionsHandle perm,
+                                                      DDS::Security::ParticipantCryptoHandle part_crypto) {
   return discovery_->add_domain_participant_secure(domain_id, qos, guid, id, perm, part_crypto);
 }
 #endif
@@ -341,17 +341,16 @@ OpenDDS::DCPS::RepoId Domain::generate_participant_guid() {
   return discovery_->generate_participant_guid();
 }
 
-AddDomainStatus Domain::add_domain_participant(const DDS::DomainParticipantQos& qos) {
+RepoId Domain::add_domain_participant(const DDS::DomainParticipantQos& qos) {
   return discovery_->add_domain_participant(domain_id_, qos);
 }
 
 #if defined(OPENDDS_SECURITY)
-AddDomainStatus Domain::add_domain_participant_secure(
-						      const DDS::DomainParticipantQos& qos,
-						      const OpenDDS::DCPS::RepoId& guid,
-						      DDS::Security::IdentityHandle id,
-						      DDS::Security::PermissionsHandle perm,
-						      DDS::Security::ParticipantCryptoHandle part_crypto) {
+RepoId Domain::add_domain_participant_secure(const DDS::DomainParticipantQos& qos,
+                                             const RepoId& guid,
+                                             DDS::Security::IdentityHandle id,
+                                             DDS::Security::PermissionsHandle perm,
+                                             DDS::Security::ParticipantCryptoHandle part_crypto) {
   return discovery_->add_domain_participant_secure(domain_id_, qos, guid, id, perm, part_crypto);
 }
 #endif

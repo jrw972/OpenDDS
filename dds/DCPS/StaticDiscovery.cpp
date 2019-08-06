@@ -648,42 +648,41 @@ StaticDiscovery::generate_participant_guid()
   return GUID_UNKNOWN;
 }
 
-AddDomainStatus
+RepoId
 StaticDiscovery::add_domain_participant(DDS::DomainId_t domain,
                                         const DDS::DomainParticipantQos& qos)
 {
-  AddDomainStatus ads = {RepoId(), false /*federated*/};
+  RepoId id = RepoId();
 
   if (qos.user_data.value.length() != BYTES_IN_PARTICIPANT) {
     ACE_ERROR((LM_ERROR,
                 ACE_TEXT("(%P|%t) ERROR: StaticDiscovery::add_domain_participant ")
                 ACE_TEXT("No userdata to identify participant\n")));
-    return ads;
+    return id;
   }
 
-  RepoId id = EndpointRegistry::build_id(domain,
-                                         qos.user_data.value.get_buffer(),
-                                         ENTITYID_PARTICIPANT);
+  id = EndpointRegistry::build_id(domain,
+                                  qos.user_data.value.get_buffer(),
+                                  ENTITYID_PARTICIPANT);
   if (!get_part(domain, id).is_nil()) {
     ACE_ERROR((LM_ERROR,
                 ACE_TEXT("(%P|%t) ERROR: StaticDiscovery::add_domain_participant ")
                 ACE_TEXT("Duplicate participant\n")));
-    return ads;
+    return id;
   }
 
   const RcHandle<StaticParticipant> participant (make_rch<StaticParticipant>(ref(id), qos, registry));
 
   {
-    ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, ads);
+    ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, id);
     participants_[domain][id] = participant;
   }
 
-  ads.id = id;
-  return ads;
+  return id;
 }
 
 #if defined(OPENDDS_SECURITY)
-AddDomainStatus
+RepoId
 StaticDiscovery::add_domain_participant_secure(
   DDS::DomainId_t /*domain*/,
   const DDS::DomainParticipantQos& /*qos*/,
@@ -692,11 +691,10 @@ StaticDiscovery::add_domain_participant_secure(
   DDS::Security::PermissionsHandle /*perm*/,
   DDS::Security::ParticipantCryptoHandle /*part_crypto*/)
 {
-  const DCPS::AddDomainStatus ads = {OpenDDS::DCPS::GUID_UNKNOWN, false /*federated*/};
   ACE_ERROR((LM_ERROR,
               ACE_TEXT("(%P|%t) ERROR: StaticDiscovery::add_domain_participant_secure ")
               ACE_TEXT("Security not supported for static discovery.\n")));
-  return ads;
+  return GUID_UNKNOWN;
 }
 #endif
 

@@ -240,13 +240,13 @@ public:
 
   int load_configuration(ACE_Configuration_Heap& config);
 
-  virtual OpenDDS::DCPS::RepoId generate_participant_guid();
+  virtual RepoId generate_participant_guid();
 
-  virtual AddDomainStatus add_domain_participant(DDS::DomainId_t domain,
-                                                 const DDS::DomainParticipantQos& qos);
+  virtual RepoId add_domain_participant(DDS::DomainId_t domain,
+                                        const DDS::DomainParticipantQos& qos);
 
 #if defined(OPENDDS_SECURITY)
-  virtual OpenDDS::DCPS::AddDomainStatus add_domain_participant_secure(
+  virtual RepoId add_domain_participant_secure(
     DDS::DomainId_t domain,
     const DDS::DomainParticipantQos& qos,
     const OpenDDS::DCPS::RepoId& guid,

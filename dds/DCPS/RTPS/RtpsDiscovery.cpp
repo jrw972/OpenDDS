@@ -447,12 +447,12 @@ RtpsDiscovery::generate_participant_guid() {
   return id;
 }
 
-DCPS::AddDomainStatus
+DCPS::RepoId
 RtpsDiscovery::add_domain_participant(DDS::DomainId_t domain,
                                       const DDS::DomainParticipantQos& qos)
 {
-  DCPS::AddDomainStatus ads = {OpenDDS::DCPS::RepoId(), false /*federated*/};
-  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, ads);
+  DCPS::RepoId id = OpenDDS::DCPS::RepoId();
+  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, id);
   if (!guid_interface_.empty()) {
     if (guid_gen_.interfaceName(guid_interface_.c_str()) != 0) {
       if (DCPS::DCPS_debug_level) {
@@ -462,23 +462,23 @@ RtpsDiscovery::add_domain_participant(DDS::DomainId_t domain,
       }
     }
   }
-  guid_gen_.populate(ads.id);
-  ads.id.entityId = ENTITYID_PARTICIPANT;
+  guid_gen_.populate(id);
+  id.entityId = ENTITYID_PARTICIPANT;
   try {
-    const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain, ref(ads.id), qos, this));
+    const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain, ref(id), qos, this));
     // ads.id may change during Spdp constructor
-    participants_[domain][ads.id] = spdp;
+    participants_[domain][id] = spdp;
   } catch (const std::exception& e) {
-    ads.id = GUID_UNKNOWN;
+    id = GUID_UNKNOWN;
     ACE_ERROR((LM_ERROR, "(%P|%t) RtpsDiscovery::add_domain_participant() - "
       "failed to initialize RTPS Simple Participant Discovery Protocol: %C\n",
       e.what()));
   }
-  return ads;
+  return id;
 }
 
 #if defined(OPENDDS_SECURITY)
-DCPS::AddDomainStatus
+DCPS::RepoId
 RtpsDiscovery::add_domain_participant_secure(DDS::DomainId_t domain,
                                       const DDS::DomainParticipantQos& qos,
                                       const OpenDDS::DCPS::RepoId& guid,
@@ -486,18 +486,18 @@ RtpsDiscovery::add_domain_participant_secure(DDS::DomainId_t domain,
                                       DDS::Security::PermissionsHandle perm,
                                       DDS::Security::ParticipantCryptoHandle part_crypto)
 {
-  DCPS::AddDomainStatus ads = {guid, false /*federated*/};
-  ads.id.entityId = ENTITYID_PARTICIPANT;
+  DCPS::RepoId rid = guid;
+  rid.entityId = ENTITYID_PARTICIPANT;
   try {
-    const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain, ads.id, qos, this, id, perm, part_crypto));
-    participants_[domain][ads.id] = spdp;
+    const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain, rid, qos, this, id, perm, part_crypto));
+    participants_[domain][rid] = spdp;
   } catch (const std::exception& e) {
-    ads.id = GUID_UNKNOWN;
+    rid = GUID_UNKNOWN;
     ACE_ERROR((LM_WARNING, "(%P|%t) RtpsDiscovery::add_domain_participant_secure() - "
       "failed to initialize RTPS Simple Participant Discovery Protocol: %C\n",
       e.what()));
   }
-  return ads;
+  return rid;
 }
 #endif
 

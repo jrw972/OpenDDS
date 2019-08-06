@@ -136,7 +136,8 @@ InfoRepoDiscovery::InfoRepoDiscovery(const RepoKey& key,
     ior_(ior),
     bit_transport_port_(0),
     use_local_bit_config_(false),
-    orb_from_user_(false)
+    orb_from_user_(false),
+    federated_(false)
 {
 }
 
@@ -146,7 +147,8 @@ InfoRepoDiscovery::InfoRepoDiscovery(const RepoKey& key,
     info_(info),
     bit_transport_port_(0),
     use_local_bit_config_(false),
-    orb_from_user_(false)
+    orb_from_user_(false),
+    federated_(false)
 {
 }
 
@@ -329,7 +331,7 @@ InfoRepoDiscovery::init_bit(DomainParticipantImpl* participant, Domain* /*domain
     bit_subscriber->get_default_datareader_qos(participantReaderQos);
     participantReaderQos.durability.kind = DDS::TRANSIENT_LOCAL_DURABILITY_QOS;
 
-    if (participant->federated()) {
+    if (federated_) {
       participantReaderQos.liveliness.lease_duration.nanosec = 0;
       participantReaderQos.liveliness.lease_duration.sec =
         TheServiceParticipant->federation_liveliness();
@@ -344,7 +346,7 @@ InfoRepoDiscovery::init_bit(DomainParticipantImpl* participant, Domain* /*domain
                                         DDS::DataReaderListener::_nil(),
                                         DEFAULT_STATUS_MASK);
 
-    if (participant->federated()) {
+    if (federated_) {
       DDS::ParticipantBuiltinTopicDataDataReader_var pbit_dr =
         DDS::ParticipantBuiltinTopicDataDataReader::_narrow(dr.in());
 
@@ -449,24 +451,25 @@ InfoRepoDiscovery::generate_participant_guid()
   return GUID_UNKNOWN;
 }
 
-DCPS::AddDomainStatus
+DCPS::RepoId
 InfoRepoDiscovery::add_domain_participant(DDS::DomainId_t domainId,
                                           const DDS::DomainParticipantQos& qos)
 {
   try {
     const DCPSInfo_var info = get_dcps_info();
     if (!CORBA::is_nil(info)) {
-      return info->add_domain_participant(domainId, qos);
+      DCPS::AddDomainStatus status = info->add_domain_participant(domainId, qos);
+      federated_ = status.federated;
+      return status.id;
     }
   } catch (const CORBA::Exception& ex) {
     ex._tao_print_exception("ERROR: InfoRepoDiscovery::add_domain_participant: ");
   }
-  const DCPS::AddDomainStatus ads = {OpenDDS::DCPS::GUID_UNKNOWN, false /*federated*/};
-  return ads;
+  return OpenDDS::DCPS::GUID_UNKNOWN;
 }
 
 #if defined(OPENDDS_SECURITY)
-DCPS::AddDomainStatus
+DCPS::RepoId
 InfoRepoDiscovery::add_domain_participant_secure(
   DDS::DomainId_t /*domain*/,
   const DDS::DomainParticipantQos& /*qos*/,
@@ -475,8 +478,7 @@ InfoRepoDiscovery::add_domain_participant_secure(
   DDS::Security::PermissionsHandle /*perm*/,
   DDS::Security::ParticipantCryptoHandle /*part_crypto*/)
 {
-  const DCPS::AddDomainStatus ads = {OpenDDS::DCPS::GUID_UNKNOWN, false /*federated*/};
-  return ads;
+  return OpenDDS::DCPS::GUID_UNKNOWN;
 }
 #endif
 
