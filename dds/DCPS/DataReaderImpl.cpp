@@ -435,7 +435,8 @@ DataReaderImpl::transport_assoc_done(int flags, const RepoId& remote_id)
   }
 
   if (!active) {
-    domain_->association_complete(dp_id_,
+    RcHandle<DomainParticipantImpl> participant = this->participant_servant_.lock();
+    domain_->association_complete(participant.get(),
 				  subscription_id_, remote_id);
   }
 
@@ -868,9 +869,9 @@ DDS::ReturnCode_t DataReaderImpl::set_qos(
         bool status = false;
         if (subscriber) {
           subscriber->get_qos(subscriberQos);
+          RcHandle<DomainParticipantImpl> participant = this->participant_servant_.lock();
           status =
-            domain_->update_subscription_qos(
-					     dp_id_,
+            domain_->update_subscription_qos(participant.get(),
 					     this->subscription_id_,
 					     qos,
 					     subscriberQos);
@@ -1258,9 +1259,9 @@ DataReaderImpl::enable()
     DDS::SubscriberQos sub_qos;
     subscriber->get_qos(sub_qos);
 
+    RcHandle<DomainParticipantImpl> participant = this->participant_servant_.lock();
     this->subscription_id_ =
-      domain_->add_subscription(
-				this->dp_id_,
+      domain_->add_subscription(participant.get(),
 				this->topic_servant_->get_id(),
 				this,
 				this->qos_,
@@ -3157,8 +3158,8 @@ DataReaderImpl::enable_multi_topic(MultiTopicImpl* mt)
 void
 DataReaderImpl::update_subscription_params(const DDS::StringSeq& params) const
 {
-  domain_->update_subscription_params(
-				      dp_id_,
+  RcHandle<DomainParticipantImpl> participant = this->participant_servant_.lock();
+  domain_->update_subscription_params(participant.get(),
 				      subscription_id_,
 				      params);
 }

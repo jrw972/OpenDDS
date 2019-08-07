@@ -324,7 +324,9 @@ DataWriterImpl::transport_assoc_done(int flags, const RepoId& remote_id)
                  ACE_TEXT("ERROR: DataWriter (%C) should always be active in current implementation\n"),
                  OPENDDS_STRING(conv).c_str()));
     }
-    domain_->association_complete(dp_id_, publication_id_, remote_id);
+
+    RcHandle<DomainParticipantImpl> participant = this->participant_servant_.lock();
+    domain_->association_complete(participant.get(), publication_id_, remote_id);
   }
 }
 
@@ -878,7 +880,8 @@ DataWriterImpl::set_qos(const DDS::DataWriterQos & qos)
         bool status = false;
         if (publisher) {
           publisher->get_qos(publisherQos);
-          status = domain_->update_publication_qos(dp_id_, this->publication_id_, qos, publisherQos);
+          RcHandle<DomainParticipantImpl> participant = this->participant_servant_.lock();
+          status = domain_->update_publication_qos(participant.get(), this->publication_id_, qos, publisherQos);
         }
         if (!status) {
           ACE_ERROR_RETURN((LM_ERROR,
@@ -1422,8 +1425,7 @@ DataWriterImpl::enable()
   publisher->get_qos(pub_qos);
 
   this->publication_id_ =
-    domain_->add_publication(
-			     this->dp_id_,
+    domain_->add_publication(participant.get(),
 			     this->topic_servant_->get_id(),
 			     this,
 			     this->qos_,

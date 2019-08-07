@@ -407,7 +407,7 @@ InfoRepoDiscovery::fini_bit(DCPS::DomainParticipantImpl* /* participant */)
 }
 
 RepoId
-InfoRepoDiscovery::bit_key_to_repo_id(DomainParticipantImpl* /*participant*/,
+InfoRepoDiscovery::bit_key_to_repo_id(const DomainParticipantImpl* /*participant*/,
                                       const char* /*bit_topic_name*/,
                                       const DDS::BuiltinTopicKey_t& key) const
 {
@@ -445,42 +445,26 @@ InfoRepoDiscovery::attach_participant(DDS::DomainId_t domainId,
   }
 }
 
-OpenDDS::DCPS::RepoId
-InfoRepoDiscovery::generate_participant_guid()
-{
-  return GUID_UNKNOWN;
-}
-
-DCPS::RepoId
+DDS::ReturnCode_t
 InfoRepoDiscovery::add_domain_participant(DDS::DomainId_t domainId,
-                                          const DDS::DomainParticipantQos& qos)
+                                          DomainParticipantImpl* dp)
 {
   try {
     const DCPSInfo_var info = get_dcps_info();
     if (!CORBA::is_nil(info)) {
-      DCPS::AddDomainStatus status = info->add_domain_participant(domainId, qos);
+      DCPS::AddDomainStatus status = info->add_domain_participant(domainId, dp->qos());
+      if (status.id == OpenDDS::DCPS::GUID_UNKNOWN) {
+        return DDS::RETCODE_ERROR;
+      }
       federated_ = status.federated;
-      return status.id;
+      dp->set_id(status.id);
+      return DDS::RETCODE_OK;
     }
   } catch (const CORBA::Exception& ex) {
     ex._tao_print_exception("ERROR: InfoRepoDiscovery::add_domain_participant: ");
   }
-  return OpenDDS::DCPS::GUID_UNKNOWN;
+  return DDS::RETCODE_ERROR;
 }
-
-#if defined(OPENDDS_SECURITY)
-DCPS::RepoId
-InfoRepoDiscovery::add_domain_participant_secure(
-  DDS::DomainId_t /*domain*/,
-  const DDS::DomainParticipantQos& /*qos*/,
-  const OpenDDS::DCPS::RepoId& /*guid*/,
-  DDS::Security::IdentityHandle /*id*/,
-  DDS::Security::PermissionsHandle /*perm*/,
-  DDS::Security::ParticipantCryptoHandle /*part_crypto*/)
-{
-  return OpenDDS::DCPS::GUID_UNKNOWN;
-}
-#endif
 
 bool
 InfoRepoDiscovery::remove_domain_participant(DDS::DomainId_t domainId,

@@ -642,23 +642,19 @@ EndpointRegistry::build_id(DDS::DomainId_t domain,
   return id;
 }
 
-OpenDDS::DCPS::RepoId
-StaticDiscovery::generate_participant_guid()
-{
-  return GUID_UNKNOWN;
-}
-
-RepoId
+DDS::ReturnCode_t
 StaticDiscovery::add_domain_participant(DDS::DomainId_t domain,
-                                        const DDS::DomainParticipantQos& qos)
+                                        DomainParticipantImpl* dp)
 {
   RepoId id = RepoId();
+
+  const DDS::DomainParticipantQos& qos = dp->qos();
 
   if (qos.user_data.value.length() != BYTES_IN_PARTICIPANT) {
     ACE_ERROR((LM_ERROR,
                 ACE_TEXT("(%P|%t) ERROR: StaticDiscovery::add_domain_participant ")
                 ACE_TEXT("No userdata to identify participant\n")));
-    return id;
+    return DDS::RETCODE_PRECONDITION_NOT_MET;
   }
 
   id = EndpointRegistry::build_id(domain,
@@ -668,35 +664,19 @@ StaticDiscovery::add_domain_participant(DDS::DomainId_t domain,
     ACE_ERROR((LM_ERROR,
                 ACE_TEXT("(%P|%t) ERROR: StaticDiscovery::add_domain_participant ")
                 ACE_TEXT("Duplicate participant\n")));
-    return id;
+    return DDS::RETCODE_PRECONDITION_NOT_MET;
   }
 
   const RcHandle<StaticParticipant> participant (make_rch<StaticParticipant>(ref(id), qos, registry));
 
   {
-    ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, id);
+    ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, DDS::RETCODE_ERROR);
     participants_[domain][id] = participant;
   }
 
-  return id;
+  dp->set_id(id);
+  return DDS::RETCODE_OK;
 }
-
-#if defined(OPENDDS_SECURITY)
-RepoId
-StaticDiscovery::add_domain_participant_secure(
-  DDS::DomainId_t /*domain*/,
-  const DDS::DomainParticipantQos& /*qos*/,
-  const OpenDDS::DCPS::RepoId& /*guid*/,
-  DDS::Security::IdentityHandle /*id*/,
-  DDS::Security::PermissionsHandle /*perm*/,
-  DDS::Security::ParticipantCryptoHandle /*part_crypto*/)
-{
-  ACE_ERROR((LM_ERROR,
-              ACE_TEXT("(%P|%t) ERROR: StaticDiscovery::add_domain_participant_secure ")
-              ACE_TEXT("Security not supported for static discovery.\n")));
-  return GUID_UNKNOWN;
-}
-#endif
 
 namespace {
   const ACE_TCHAR TOPIC_SECTION_NAME[] = ACE_TEXT("topic");

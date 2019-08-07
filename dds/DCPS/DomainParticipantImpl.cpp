@@ -63,20 +63,6 @@ namespace Util {
     return 0;
   }
 
-  DDS::PropertySeq filter_properties(const DDS::PropertySeq& properties, const std::string& prefix)
-  {
-    DDS::PropertySeq result(properties.length());
-    result.length(properties.length());
-    unsigned int count = 0;
-    for (unsigned int i = 0; i < properties.length(); ++i) {
-      if (std::string(properties[i].name.in()).find(prefix) == 0) {
-        result[count++] = properties[i];
-      }
-    }
-    result.length(count);
-    return result;
-  }
-
 } // namespace Util
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
@@ -578,8 +564,7 @@ DomainParticipantImpl::delete_topic_i(
         //TBD - mark the TopicImpl as deleted and make it
         //      reject calls to the TopicImpl.
         TopicStatus status
-	  = domain_->remove_topic(
-				  the_dp_servant->get_id(),
+	  = domain_->remove_topic(the_dp_servant,
 				  the_topic_servant->get_id());
 
         if (status != REMOVED) {
@@ -648,8 +633,7 @@ DomainParticipantImpl::find_topic(
     CORBA::String_var type_name;
     DDS::TopicQos_var qos;
 
-    TopicStatus status = domain_->find_topic(
-					     get_id(),
+    TopicStatus status = domain_->find_topic(this,
 					     topic_name,
 					     type_name.out(),
 					     qos.out(),
@@ -1087,9 +1071,7 @@ DomainParticipantImpl::set_qos(
       qos_ = qos;
 
       const bool status =
-        domain_->update_domain_participant_qos(
-					       dp_id_,
-					       qos_);
+        domain_->update_domain_participant_qos(this);
 
       if (!status) {
         ACE_ERROR_RETURN((LM_ERROR,
@@ -1163,8 +1145,7 @@ DomainParticipantImpl::ignore_participant(
                handle));
   }
 
-  if (!domain_->ignore_domain_participant(
-					  dp_id_,
+  if (!domain_->ignore_domain_participant(this,
 					  ignoreId)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_participant, ")
@@ -1221,8 +1202,7 @@ DomainParticipantImpl::ignore_topic(
                handle));
   }
 
-  if (!domain_->ignore_topic(
-			     dp_id_,
+  if (!domain_->ignore_topic(this,
 			     ignoreId)) {
     ACE_ERROR((LM_ERROR,
                ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_topic, ")
@@ -1259,8 +1239,7 @@ DomainParticipantImpl::ignore_publication(
   }
 
   RepoId ignoreId = get_repoid(handle);
-  if (!domain_->ignore_publication(
-				   dp_id_,
+  if (!domain_->ignore_publication(this,
 				   ignoreId)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_publication, ")
@@ -1299,8 +1278,7 @@ DomainParticipantImpl::ignore_subscription(
 
 
   RepoId ignoreId = get_repoid(handle);
-  if (!domain_->ignore_subscription(
-				    dp_id_,
+  if (!domain_->ignore_subscription(this,
 				    ignoreId)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: DomainParticipantImpl::ignore_subscription, ")
@@ -1626,103 +1604,10 @@ DomainParticipantImpl::enable()
   }
 #endif
 
-  RepoId id = GUID_UNKNOWN;
-
-#ifdef OPENDDS_SECURITY
-  if (TheServiceParticipant->get_security()) {
-    Security::Authentication_var auth = security_config_->get_authentication();
-
-    DDS::DomainId_t domain_id = domain_->domain_id();
-    DDS::Security::SecurityException se;
-    DDS::Security::ValidationResult_t val_res =
-      auth->validate_local_identity(id_handle_, dp_id_, domain_id, qos_, domain_->generate_participant_guid(), se);
-
-    /* TODO - Handle VALIDATION_PENDING_RETRY */
-    if (val_res != DDS::Security::VALIDATION_OK) {
-      ACE_ERROR((LM_ERROR,
-        ACE_TEXT("(%P|%t) ERROR: ")
-        ACE_TEXT("DomainParticipantImpl::enable, ")
-        ACE_TEXT("Unable to validate local identity. SecurityException[%d.%d]: %C\n"),
-          se.code, se.minor_code, se.message.in()));
-      return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
-    }
-
-    Security::AccessControl_var access = security_config_->get_access_control();
-
-    perm_handle_ = access->validate_local_permissions(auth, id_handle_, domain_id, qos_, se);
-
-    if (perm_handle_ == DDS::HANDLE_NIL) {
-      ACE_ERROR((LM_ERROR,
-        ACE_TEXT("(%P|%t) ERROR: ")
-        ACE_TEXT("DomainParticipantImpl::enable, ")
-        ACE_TEXT("Unable to validate local permissions. SecurityException[%d.%d]: %C\n"),
-          se.code, se.minor_code, se.message.in()));
-      return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
-    }
-
-    bool check_create = access->check_create_participant(perm_handle_, domain_id, qos_, se);
-    if (!check_create) {
-      ACE_ERROR((LM_ERROR,
-        ACE_TEXT("(%P|%t) ERROR: ")
-        ACE_TEXT("DomainParticipantImpl::enable, ")
-        ACE_TEXT("Unable to create participant. SecurityException[%d.%d]: %C\n"),
-          se.code, se.minor_code, se.message.in()));
-      return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
-    }
-
-    DDS::Security::ParticipantSecurityAttributes part_sec_attr;
-    bool check_part_sec_attr = access->get_participant_sec_attributes(perm_handle_, part_sec_attr, se);
-
-    if (!check_part_sec_attr) {
-      ACE_ERROR((LM_ERROR,
-        ACE_TEXT("(%P|%t) ERROR: ")
-        ACE_TEXT("DomainParticipantImpl::enable, ")
-        ACE_TEXT("Unable to get participant security attributes. SecurityException[%d.%d]: %C\n"),
-          se.code, se.minor_code, se.message.in()));
-      return DDS::RETCODE_ERROR;
-    }
-
-    Security::CryptoKeyFactory_var crypto = security_config_->get_crypto_key_factory();
-
-    part_crypto_handle_ = crypto->register_local_participant(id_handle_, perm_handle_,
-      Util::filter_properties(qos_.property.value, "dds.sec.crypto."), part_sec_attr, se);
-    if (part_crypto_handle_ == DDS::HANDLE_NIL) {
-      ACE_ERROR((LM_ERROR,
-        ACE_TEXT("(%P|%t) ERROR: ")
-        ACE_TEXT("DomainParticipantImpl::enable, ")
-        ACE_TEXT("Unable to register local participant. SecurityException[%d.%d]: %C\n"),
-          se.code, se.minor_code, se.message.in()));
-      return DDS::RETCODE_ERROR;
-    }
-
-    id = domain_->add_domain_participant_secure(qos_, dp_id_, id_handle_, perm_handle_, part_crypto_handle_);
-
-    if (id == GUID_UNKNOWN) {
-      ACE_ERROR((LM_ERROR,
-                 ACE_TEXT("(%P|%t) ERROR: ")
-                 ACE_TEXT("DomainParticipantImpl::enable, ")
-                 ACE_TEXT("add_domain_participant_secure returned invalid id.\n")));
-      return DDS::RETCODE_ERROR;
-    }
-
-  } else {
-#endif
-
-    id = domain_->add_domain_participant(qos_);
-
-    if (id == GUID_UNKNOWN) {
-      ACE_ERROR((LM_ERROR,
-                 ACE_TEXT("(%P|%t) ERROR: ")
-                 ACE_TEXT("DomainParticipantImpl::enable, ")
-                 ACE_TEXT("add_domain_participant returned invalid id.\n")));
-      return DDS::RETCODE_ERROR;
-    }
-
-#ifdef OPENDDS_SECURITY
+  DDS::ReturnCode_t ret = domain_->add_domain_participant(this);
+  if (ret != DDS::RETCODE_OK) {
+    return ret;
   }
-#endif
-
-  dp_id_ = id;
 
   if (monitor_) {
     monitor_->report();
@@ -1732,7 +1617,7 @@ DomainParticipantImpl::enable()
     TheServiceParticipant->monitor_->report();
   }
 
-  const DDS::ReturnCode_t ret = this->set_enabled();
+  ret = this->set_enabled();
 
   if (DCPS_debug_level > 1) {
     ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) DomainParticipantImpl::enable: ")
@@ -1767,9 +1652,25 @@ DomainParticipantImpl::enable()
 }
 
 RepoId
-DomainParticipantImpl::get_id()
+DomainParticipantImpl::get_id() const
 {
   return dp_id_;
+}
+
+void DomainParticipantImpl::set_id(const RepoId& id)
+{
+  dp_id_ = id;
+}
+
+DDS::DomainId_t
+DomainParticipantImpl::domain_id() const
+{
+  return domain_->domain_id();
+}
+
+const DDS::DomainParticipantQos& DomainParticipantImpl::qos() const
+{
+  return qos_;
 }
 
 OPENDDS_STRING
@@ -2324,7 +2225,7 @@ DomainParticipantImpl::participant_liveliness_activity_after(const ACE_Time_Valu
 void
 DomainParticipantImpl::signal_liveliness (DDS::LivelinessQosPolicyKind kind)
 {
-  domain_->signal_liveliness(get_id(), kind);
+  domain_->signal_liveliness(this, kind);
 }
 
 #ifdef OPENDDS_SECURITY
@@ -2332,6 +2233,11 @@ void
 DomainParticipantImpl::set_security_config(const Security::SecurityConfig_rch& cfg)
 {
   security_config_ = cfg;
+}
+
+Security::SecurityConfig_rch DomainParticipantImpl::get_security_config() const
+{
+  return security_config_;
 }
 #endif
 

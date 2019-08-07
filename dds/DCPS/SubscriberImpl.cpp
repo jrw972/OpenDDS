@@ -359,8 +359,8 @@ SubscriberImpl::delete_datareader(::DDS::DataReader_ptr a_datareader)
   }
 
   RepoId subscription_id = dr_servant->get_subscription_id();
-  if (!domain_->remove_subscription(
-				    this->dp_id_,
+  RcHandle<DomainParticipantImpl> participant = participant_.lock();
+  if (!domain_->remove_subscription(participant.get(),
 				    subscription_id)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: ")
@@ -634,9 +634,9 @@ SubscriberImpl::set_qos(
       DrIdToQosMap::iterator iter = idToQosMap.begin();
 
       while (iter != idToQosMap.end()) {
+        RcHandle<DomainParticipantImpl> participant = participant_.lock();
         const bool status
-          = domain_->update_subscription_qos(
-					     this->dp_id_,
+          = domain_->update_subscription_qos(participant.get(),
 					     iter->first,
 					     iter->second,
 					     this->qos_);

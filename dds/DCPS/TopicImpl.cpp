@@ -72,7 +72,7 @@ TopicImpl::set_qos(const DDS::TopicQos & qos)
 
       const bool status =
         domain_->update_topic_qos(this->id_,
-				  participant_->get_id(), qos_);
+				  participant_, qos_);
 
       if (!status) {
         ACE_ERROR_RETURN((LM_ERROR,
@@ -139,7 +139,7 @@ TopicImpl::enable()
 
   if (id_ == GUID_UNKNOWN) {
     TopicStatus status = domain_->assert_topic(id_,
-					       participant_->get_id(),
+					       participant_,
 					       topic_name_.c_str(),
 					       type_name_.c_str(),
 					       qos_,

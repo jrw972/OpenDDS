@@ -284,7 +284,26 @@ public:
   /**
    *  Return the id given by discovery.
    */
-  RepoId get_id();
+  // TODO(jrw972): Remove this method.
+  RepoId get_id() const;
+
+  /**
+   *  Set the id.
+   */
+  // TODO(jrw972): Remove this method.
+  void set_id(const RepoId& id);
+
+  /**
+   *  Return the domain id.
+   */
+  // TODO(jrw972): Remove this method.
+  DDS::DomainId_t domain_id() const;
+
+  /**
+   *  Return the qos.
+   */
+  const DDS::DomainParticipantQos& qos() const;
+
 
   /**
    * Return a unique string based on repo ID.
@@ -365,8 +384,27 @@ public:
   void remove_adjust_liveliness_timers();
 
 #if defined(OPENDDS_SECURITY)
+  // TODO(jrw972): Remove these methods, maybe.
   void set_security_config(const Security::SecurityConfig_rch& config);
+  Security::SecurityConfig_rch get_security_config() const;
 
+  // TODO(jrw972): Remove this method.
+  DDS::Security::IdentityHandle& id_handle() {
+    return id_handle_;
+  }
+
+  // TODO(jrw972): Remove this method.
+  DDS::Security::PermissionsHandle& perm_handle() {
+    return perm_handle_;
+  }
+
+  // TODO(jrw972): Remove this method.
+  DDS::Security::ParticipantCryptoHandle& crypto_handle()
+  {
+    return part_crypto_handle_;
+  }
+
+  // TODO(jrw972): Remove this method.
   DDS::Security::ParticipantCryptoHandle crypto_handle() const
   {
     return part_crypto_handle_;

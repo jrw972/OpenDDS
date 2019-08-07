@@ -43,21 +43,9 @@ public:
   explicit RtpsDiscovery(const RepoKey& key);
   ~RtpsDiscovery();
 
-  virtual OpenDDS::DCPS::RepoId generate_participant_guid();
-
-  virtual OpenDDS::DCPS::RepoId add_domain_participant(
+  virtual DDS::ReturnCode_t add_domain_participant(
     DDS::DomainId_t domain,
-    const DDS::DomainParticipantQos& qos);
-
-#if defined(OPENDDS_SECURITY)
-  virtual OpenDDS::DCPS::RepoId add_domain_participant_secure(
-    DDS::DomainId_t domain,
-    const DDS::DomainParticipantQos& qos,
-    const OpenDDS::DCPS::RepoId& guid,
-    DDS::Security::IdentityHandle id,
-    DDS::Security::PermissionsHandle perm,
-    DDS::Security::ParticipantCryptoHandle part_crypto);
-#endif
+    DCPS::DomainParticipantImpl* dp);
 
   virtual bool supports_liveliness() const { return true; }
 

@@ -240,20 +240,8 @@ public:
 
   int load_configuration(ACE_Configuration_Heap& config);
 
-  virtual RepoId generate_participant_guid();
-
-  virtual RepoId add_domain_participant(DDS::DomainId_t domain,
-                                        const DDS::DomainParticipantQos& qos);
-
-#if defined(OPENDDS_SECURITY)
-  virtual RepoId add_domain_participant_secure(
-    DDS::DomainId_t domain,
-    const DDS::DomainParticipantQos& qos,
-    const OpenDDS::DCPS::RepoId& guid,
-    DDS::Security::IdentityHandle id,
-    DDS::Security::PermissionsHandle perm,
-    DDS::Security::ParticipantCryptoHandle part_crypto);
-#endif
+  virtual DDS::ReturnCode_t add_domain_participant(DDS::DomainId_t domain,
+                                                   DomainParticipantImpl* dp);
 
   EndpointRegistry registry;
 

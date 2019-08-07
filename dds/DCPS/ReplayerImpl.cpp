@@ -129,7 +129,7 @@ ReplayerImpl::cleanup()
   // this->unregister_all();
 
   if (!domain_->remove_publication(
-        this->participant_servant_->get_id(),
+        this->participant_servant_,
         this->publication_id_)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: ")
@@ -216,8 +216,7 @@ DDS::ReturnCode_t ReplayerImpl::set_qos (const DDS::PublisherQos &  publisher_qo
       // this->publisher_servant_->get_qos(publisherQos);
       DDS::PublisherQos publisherQos = this->publisher_qos_;
       const bool status
-        = domain_->update_publication_qos(
-					  this->participant_servant_->get_id(),
+        = domain_->update_publication_qos(this->participant_servant_,
 					  this->publication_id_,
 					  qos,
 					  publisherQos);
@@ -359,7 +358,7 @@ ReplayerImpl::enable()
 
   this->publication_id_ =
     domain_->add_publication(
-			     this->participant_servant_->get_id(),
+			     this->participant_servant_,
 			     this->topic_servant_->get_id(),
 			     this,
 			     this->qos_,
@@ -473,8 +472,7 @@ ReplayerImpl::add_association(const RepoId&            yourId,
   } else {
     // In the current implementation, DataWriter is always active, so this
     // code will not be applicable.
-    domain_->association_complete(
-				  this->participant_servant_->get_id(),
+    domain_->association_complete(this->participant_servant_,
 				  this->publication_id_, reader.readerId);
   }
 }

@@ -287,8 +287,7 @@ PublisherImpl::delete_datawriter(DDS::DataWriter_ptr a_datawriter)
 
   RcHandle<DomainParticipantImpl> participant = this->participant_.lock();
 
-  if (!domain_->remove_publication(
-				   participant->get_id(),
+  if (!domain_->remove_publication(participant.get(),
 				   publication_id)) {
     ACE_ERROR_RETURN((LM_ERROR,
         ACE_TEXT("(%P|%t) ERROR: ")
@@ -426,8 +425,7 @@ PublisherImpl::set_qos(const DDS::PublisherQos & qos)
 
         RcHandle<DomainParticipantImpl> participant = this->participant_.lock();
         if (participant)
-          status = domain_->update_publication_qos(
-						   participant->get_id(),
+          status = domain_->update_publication_qos(participant.get(),
 						   iter->first,
 						   iter->second,
 						   this->qos_);

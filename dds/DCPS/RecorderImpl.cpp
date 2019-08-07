@@ -105,8 +105,7 @@ DDS::ReturnCode_t
 RecorderImpl::cleanup()
 {
 
-  if (!domain_->remove_subscription(
-				    participant_servant_->get_id(),
+  if (!domain_->remove_subscription(participant_servant_,
 				    this->subscription_id_)) {
     ACE_ERROR_RETURN((LM_ERROR,
                       ACE_TEXT("(%P|%t) ERROR: ")
@@ -497,7 +496,7 @@ RecorderImpl::add_association(const RepoId&            yourId,
 
   if (!active) {
     domain_->association_complete(
-				  this->participant_servant_->get_id(),
+				  this->participant_servant_,
 				  this->subscription_id_, writer.writerId);
   }
 
@@ -853,7 +852,7 @@ DDS::ReturnCode_t RecorderImpl::set_qos(
     } else {
       const bool status =
         domain_->update_subscription_qos(
-					 this->participant_servant_->get_id(),
+					 this->participant_servant_,
 					 this->subscription_id_,
 					 qos,
 					 subscriber_qos);
@@ -976,7 +975,7 @@ RecorderImpl::enable()
 
     this->subscription_id_ =
       domain_->add_subscription(
-				this->participant_servant_->get_id(),
+				this->participant_servant_,
 				this->topic_servant_->get_id(),
 				this,
 				this->qos_,

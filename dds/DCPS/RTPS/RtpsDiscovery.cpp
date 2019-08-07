@@ -34,6 +34,41 @@ namespace {
   }
 }
 
+namespace Util {
+
+  template <typename Key>
+  int find(
+    OpenDDS::DCPS::DomainParticipantImpl::TopicMap& c,
+    const Key& key,
+    OpenDDS::DCPS::DomainParticipantImpl::TopicMap::mapped_type*& value)
+  {
+    OpenDDS::DCPS::DomainParticipantImpl::TopicMap::iterator iter =
+      c.find(key);
+
+    if (iter == c.end()) {
+      return -1;
+    }
+
+    value = &iter->second;
+    return 0;
+  }
+
+  DDS::PropertySeq filter_properties(const DDS::PropertySeq& properties, const std::string& prefix)
+  {
+    DDS::PropertySeq result(properties.length());
+    result.length(properties.length());
+    unsigned int count = 0;
+    for (unsigned int i = 0; i < properties.length(); ++i) {
+      if (std::string(properties[i].name.in()).find(prefix) == 0) {
+        result[count++] = properties[i];
+      }
+    }
+    result.length(count);
+    return result;
+  }
+
+} // namespace Util
+
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 
 namespace OpenDDS {
@@ -429,10 +464,12 @@ RtpsDiscovery::Config::discovery_config(ACE_Configuration_Heap& cf)
 
 // Participant operations:
 
-OpenDDS::DCPS::RepoId
-RtpsDiscovery::generate_participant_guid() {
+DDS::ReturnCode_t
+RtpsDiscovery::add_domain_participant(DDS::DomainId_t domain_id,
+                                      DCPS::DomainParticipantImpl* dp)
+{
   OpenDDS::DCPS::RepoId id = GUID_UNKNOWN;
-  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, id);
+  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, DDS::RETCODE_ERROR);
   if (!guid_interface_.empty()) {
     if (guid_gen_.interfaceName(guid_interface_.c_str()) != 0) {
       if (DCPS::DCPS_debug_level) {
@@ -444,62 +481,103 @@ RtpsDiscovery::generate_participant_guid() {
   }
   guid_gen_.populate(id);
   id.entityId = ENTITYID_PARTICIPANT;
-  return id;
-}
 
-DCPS::RepoId
-RtpsDiscovery::add_domain_participant(DDS::DomainId_t domain,
-                                      const DDS::DomainParticipantQos& qos)
-{
-  DCPS::RepoId id = OpenDDS::DCPS::RepoId();
-  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, id);
-  if (!guid_interface_.empty()) {
-    if (guid_gen_.interfaceName(guid_interface_.c_str()) != 0) {
-      if (DCPS::DCPS_debug_level) {
-        ACE_DEBUG((LM_WARNING, "(%P|%t) RtpsDiscovery::add_domain_participant()"
-                   " - attempt to use specific network interface's MAC addr for"
-                   " GUID generation failed.\n"));
-      }
+#ifdef OPENDDS_SECURITY
+  if (TheServiceParticipant->get_security()) {
+    Security::Authentication_var auth = dp->get_security_config()->get_authentication();
+
+    DDS::Security::SecurityException se;
+    DDS::Security::ValidationResult_t val_res =
+      auth->validate_local_identity(dp->id_handle(), id, domain_id, dp->qos(), id, se);
+
+    /* TODO - Handle VALIDATION_PENDING_RETRY */
+    if (val_res != DDS::Security::VALIDATION_OK) {
+      ACE_ERROR((LM_ERROR,
+        ACE_TEXT("(%P|%t) ERROR: ")
+        ACE_TEXT("DomainParticipantImpl::enable, ")
+        ACE_TEXT("Unable to validate local identity. SecurityException[%d.%d]: %C\n"),
+          se.code, se.minor_code, se.message.in()));
+      return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
     }
-  }
-  guid_gen_.populate(id);
-  id.entityId = ENTITYID_PARTICIPANT;
-  try {
-    const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain, ref(id), qos, this));
-    // ads.id may change during Spdp constructor
-    participants_[domain][id] = spdp;
-  } catch (const std::exception& e) {
-    id = GUID_UNKNOWN;
-    ACE_ERROR((LM_ERROR, "(%P|%t) RtpsDiscovery::add_domain_participant() - "
-      "failed to initialize RTPS Simple Participant Discovery Protocol: %C\n",
-      e.what()));
-  }
-  return id;
-}
 
-#if defined(OPENDDS_SECURITY)
-DCPS::RepoId
-RtpsDiscovery::add_domain_participant_secure(DDS::DomainId_t domain,
-                                      const DDS::DomainParticipantQos& qos,
-                                      const OpenDDS::DCPS::RepoId& guid,
-                                      DDS::Security::IdentityHandle id,
-                                      DDS::Security::PermissionsHandle perm,
-                                      DDS::Security::ParticipantCryptoHandle part_crypto)
-{
-  DCPS::RepoId rid = guid;
-  rid.entityId = ENTITYID_PARTICIPANT;
-  try {
-    const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain, rid, qos, this, id, perm, part_crypto));
-    participants_[domain][rid] = spdp;
-  } catch (const std::exception& e) {
-    rid = GUID_UNKNOWN;
-    ACE_ERROR((LM_WARNING, "(%P|%t) RtpsDiscovery::add_domain_participant_secure() - "
-      "failed to initialize RTPS Simple Participant Discovery Protocol: %C\n",
-      e.what()));
-  }
-  return rid;
-}
+    Security::AccessControl_var access = dp->get_security_config()->get_access_control();
+
+    dp->perm_handle() = access->validate_local_permissions(auth, dp->id_handle(), domain_id, dp->qos(), se);
+
+    if (dp->perm_handle() == DDS::HANDLE_NIL) {
+      ACE_ERROR((LM_ERROR,
+        ACE_TEXT("(%P|%t) ERROR: ")
+        ACE_TEXT("DomainParticipantImpl::enable, ")
+        ACE_TEXT("Unable to validate local permissions. SecurityException[%d.%d]: %C\n"),
+          se.code, se.minor_code, se.message.in()));
+      return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
+    }
+
+    bool check_create = access->check_create_participant(dp->perm_handle(), domain_id, dp->qos(), se);
+    if (!check_create) {
+      ACE_ERROR((LM_ERROR,
+        ACE_TEXT("(%P|%t) ERROR: ")
+        ACE_TEXT("DomainParticipantImpl::enable, ")
+        ACE_TEXT("Unable to create participant. SecurityException[%d.%d]: %C\n"),
+          se.code, se.minor_code, se.message.in()));
+      return DDS::Security::RETCODE_NOT_ALLOWED_BY_SECURITY;
+    }
+
+    DDS::Security::ParticipantSecurityAttributes part_sec_attr;
+    bool check_part_sec_attr = access->get_participant_sec_attributes(dp->perm_handle(), part_sec_attr, se);
+
+    if (!check_part_sec_attr) {
+      ACE_ERROR((LM_ERROR,
+        ACE_TEXT("(%P|%t) ERROR: ")
+        ACE_TEXT("DomainParticipantImpl::enable, ")
+        ACE_TEXT("Unable to get participant security attributes. SecurityException[%d.%d]: %C\n"),
+          se.code, se.minor_code, se.message.in()));
+      return DDS::RETCODE_ERROR;
+    }
+
+    Security::CryptoKeyFactory_var crypto = dp->get_security_config()->get_crypto_key_factory();
+
+    dp->crypto_handle() = crypto->register_local_participant(dp->id_handle(), dp->perm_handle(),
+      Util::filter_properties(dp->qos().property.value, "dds.sec.crypto."), part_sec_attr, se);
+    if (dp->crypto_handle() == DDS::HANDLE_NIL) {
+      ACE_ERROR((LM_ERROR,
+        ACE_TEXT("(%P|%t) ERROR: ")
+        ACE_TEXT("DomainParticipantImpl::enable, ")
+        ACE_TEXT("Unable to register local participant. SecurityException[%d.%d]: %C\n"),
+          se.code, se.minor_code, se.message.in()));
+      return DDS::RETCODE_ERROR;
+    }
+
+    id.entityId = ENTITYID_PARTICIPANT;
+    try {
+      const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain_id, id, dp->qos(), this, dp->id_handle(), dp->perm_handle(), dp->crypto_handle()));
+      participants_[domain_id][id] = spdp;
+    } catch (const std::exception& e) {
+      ACE_ERROR((LM_WARNING, "(%P|%t) RtpsDiscovery::add_domain_participant_secure() - "
+                 "failed to initialize RTPS Simple Participant Discovery Protocol: %C\n",
+                 e.what()));
+      return DDS::RETCODE_ERROR;
+    }
+  } else {
 #endif
+
+    try {
+      const DCPS::RcHandle<Spdp> spdp (DCPS::make_rch<Spdp>(domain_id, ref(id), dp->qos(), this));
+      // ads.id may change during Spdp constructor
+      participants_[domain_id][id] = spdp;
+    } catch (const std::exception& e) {
+      ACE_ERROR((LM_ERROR, "(%P|%t) RtpsDiscovery::add_domain_participant() - "
+                 "failed to initialize RTPS Simple Participant Discovery Protocol: %C\n",
+                 e.what()));
+      return DDS::RETCODE_ERROR;
+    }
+#ifdef OPENDDS_SECURITY
+  }
+#endif
+
+  dp->set_id(id);
+  return DDS::RETCODE_OK;
+}
 
 void
 RtpsDiscovery::signal_liveliness(const DDS::DomainId_t domain_id,

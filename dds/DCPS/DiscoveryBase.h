@@ -1735,11 +1735,11 @@ namespace OpenDDS {
         get_part(participant->get_domain_id(), participant->get_id())->fini_bit();
       }
 
-      virtual OpenDDS::DCPS::RepoId bit_key_to_repo_id(DCPS::DomainParticipantImpl* participant,
+      virtual OpenDDS::DCPS::RepoId bit_key_to_repo_id(const DCPS::DomainParticipantImpl* participant,
                                                        const char* bit_topic_name,
                                                        const DDS::BuiltinTopicKey_t& key) const
       {
-        return get_part(participant->get_domain_id(), participant->get_id())
+        return get_part(participant->domain_id(), participant->get_id())
           ->bit_key_to_repo_id(bit_topic_name, key);
       }
 

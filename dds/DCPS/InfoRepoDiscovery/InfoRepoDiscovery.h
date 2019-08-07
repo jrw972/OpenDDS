@@ -74,7 +74,7 @@ public:
 
   virtual void fini_bit(DCPS::DomainParticipantImpl* participant);
 
-  virtual RepoId bit_key_to_repo_id(DomainParticipantImpl* participant,
+  virtual RepoId bit_key_to_repo_id(const DomainParticipantImpl* participant,
                                     const char* bit_topic_name,
                                     const DDS::BuiltinTopicKey_t& key) const;
 
@@ -82,21 +82,9 @@ public:
     DDS::DomainId_t domainId,
     const OpenDDS::DCPS::RepoId& participantId);
 
-  virtual OpenDDS::DCPS::RepoId generate_participant_guid();
-
-  virtual OpenDDS::DCPS::RepoId add_domain_participant(
+  virtual DDS::ReturnCode_t add_domain_participant(
     DDS::DomainId_t domain,
-    const DDS::DomainParticipantQos& qos);
-
-#if defined(OPENDDS_SECURITY)
-  virtual OpenDDS::DCPS::RepoId add_domain_participant_secure(
-    DDS::DomainId_t domain,
-    const DDS::DomainParticipantQos& qos,
-    const OpenDDS::DCPS::RepoId& guid,
-    DDS::Security::IdentityHandle id,
-    DDS::Security::PermissionsHandle perm,
-    DDS::Security::ParticipantCryptoHandle part_crypto);
-#endif
+    DomainParticipantImpl* dp);
 
   virtual bool remove_domain_participant(
     DDS::DomainId_t domainId,

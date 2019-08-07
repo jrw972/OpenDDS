@@ -190,7 +190,7 @@ DomainParticipantFactoryImpl::delete_participant(
   }
 
   Domain* domain = get_domain(domain_id);
-  if (!domain->remove_domain_participant(dp_id)) {
+  if (!domain->remove_domain_participant(the_servant)) {
     ACE_ERROR_RETURN((LM_ERROR,
 		      ACE_TEXT("(%P|%t) ERROR: ")
 		      ACE_TEXT("could not remove domain participant.\n")),
