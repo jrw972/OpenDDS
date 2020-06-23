@@ -241,7 +241,7 @@ WriteDataContainer::reenqueue_all(const RepoId& reader_id,
   }
 
   copy_and_prepend(resend_data_,
-                   sending_data_,
+                   sent_data_,
                    reader_id,
                    lifespan,
 #ifndef OPENDDS_NO_CONTENT_FILTERED_TOPIC
@@ -250,7 +250,7 @@ WriteDataContainer::reenqueue_all(const RepoId& reader_id,
                    total_size);
 
   copy_and_prepend(resend_data_,
-                   sent_data_,
+                   sending_data_,
                    reader_id,
                    lifespan,
 #ifndef OPENDDS_NO_CONTENT_FILTERED_TOPIC

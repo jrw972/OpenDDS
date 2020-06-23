@@ -361,8 +361,7 @@ private:
     void send_sample(const ACE_Message_Block& data,
                      size_t size,
                      const DCPS::RepoId& reader,
-                     DCPS::SequenceNumber& sequence,
-                     bool historic = false);
+                     DCPS::SequenceNumber& sequence);
 
     DDS::ReturnCode_t write_parameter_list(const ParameterList& plist,
                                            const DCPS::RepoId& reader,
@@ -386,8 +385,6 @@ private:
 #endif
 
     DDS::ReturnCode_t write_unregister_dispose(const DCPS::RepoId& rid, CORBA::UShort pid = PID_ENDPOINT_GUID);
-
-    void end_historic_samples(const DCPS::RepoId& reader);
 
     const DCPS::SequenceNumber& get_seq() const
     {

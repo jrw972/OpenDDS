@@ -286,8 +286,6 @@ private:
     OPENDDS_MAP(SequenceNumber, RTPS::FragmentNumberSet) requested_frags_;
     SequenceNumber cur_cumulative_ack_;
     bool handshake_done_, durable_;
-    OPENDDS_MAP(SequenceNumber, TransportQueueElement*) durable_data_;
-    MonotonicTimePoint durable_timestamp_;
 
     explicit ReaderInfo(bool durable)
       : acknack_recvd_count_(0)
@@ -298,9 +296,6 @@ private:
       , durable_(durable)
     {}
     ~ReaderInfo();
-    void swap_durable_data(OPENDDS_MAP(SequenceNumber, TransportQueueElement*)& dd);
-    void expire_durable_data();
-    bool expecting_durable_data() const;
   };
 
   typedef OPENDDS_MAP_CMP(RepoId, ReaderInfo, GUID_tKeyLessThan) ReaderInfoMap;
@@ -363,7 +358,7 @@ private:
   public:
     RtpsWriter(RcHandle<RtpsUdpDataLink> link, const RepoId& id, bool durable, CORBA::Long hbc, size_t capacity);
     ~RtpsWriter();
-    SequenceNumber heartbeat_high(const ReaderInfo&) const;
+    SequenceNumber heartbeat_high() const;
     void add_elem_awaiting_ack(TransportQueueElement* element);
 
     void send_delayed_notifications(const TransportQueueElement::MatchCriteria& criteria);
@@ -391,8 +386,7 @@ private:
                           MetaSubmessageVec& meta_submessages);
     void process_acked_by_all();
     void send_and_gather_nack_replies(MetaSubmessageVec& meta_submessages);
-    bool gather_heartbeats(OPENDDS_VECTOR(TransportQueueElement*)& pendingCallbacks,
-                           const RepoIdSet& additional_guids,
+    bool gather_heartbeats(const RepoIdSet& additional_guids,
                            bool allow_final,
                            MetaSubmessageVec& meta_submessages);
     RcHandle<SingleSendBuffer> get_send_buff() { return send_buff_; }

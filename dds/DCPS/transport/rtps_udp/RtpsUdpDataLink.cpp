@@ -895,16 +895,6 @@ RtpsUdpDataLink::release_reservations_i(const RepoId& remote_id,
       g.release();
 
       reader->remove_writer(remote_id);
-
-      if (reader->writer_count() == 0) {
-        {
-          ACE_GUARD(ACE_Thread_Mutex, h, readers_lock_);
-          rr = readers_.find(local_id);
-          if (rr != readers_.end()) {
-            readers_.erase(rr);
-          }
-        }
-      }
     } else {
       WriterToSeqReadersMap::iterator w = writer_to_seq_best_effort_readers_.find(remote_id);
       if (w != writer_to_seq_best_effort_readers_.end()) {
@@ -1048,7 +1038,6 @@ RtpsUdpDataLink::RtpsWriter::customize_queue_element_helper(
     return 0;
   }
 
-  bool gap_ok = true;
   DestToEntityMap gap_receivers;
   if (!remote_readers_.empty()) {
     for (ReaderInfoMap::iterator ri = remote_readers_.begin();
@@ -1057,23 +1046,12 @@ RtpsUdpDataLink::RtpsWriter::customize_queue_element_helper(
       std::memcpy(tmp.guidPrefix, ri->first.guidPrefix, sizeof(GuidPrefix_t));
       tmp.entityId = ENTITYID_UNKNOWN;
       gap_receivers[tmp].push_back(ri->first);
-
-      if (ri->second.expecting_durable_data()) {
-        // Can't add an in-line GAP if some Data Reader is expecting durable
-        // data, the GAP could cause that Data Reader to ignore the durable
-        // data.  The other readers will eventually learn about the GAP by
-        // sending an ACKNACK and getting a GAP reply.
-        gap_ok = false;
-        break;
-      }
     }
   }
 
   RTPS::SubmessageSeq subm;
 
-  if (gap_ok) {
-    add_gap_submsg_i(subm, *element, gap_receivers);
-  }
+  add_gap_submsg_i(subm, *element, gap_receivers);
 
   const SequenceNumber seq = element->sequence();
   if (seq != SequenceNumber::SEQUENCENUMBER_UNKNOWN()) {
@@ -1088,7 +1066,6 @@ RtpsUdpDataLink::RtpsWriter::customize_queue_element_helper(
     dynamic_cast<TransportSendControlElement*>(element);
 
   Message_Block_Ptr data;
-  bool durable = false;
 
   const ACE_Message_Block* msg = element->msg();
   const RepoId pub_id = element->publication_id();
@@ -1123,8 +1100,6 @@ RtpsUdpDataLink::RtpsWriter::customize_queue_element_helper(
     // Create RTPS Submessage(s) in place of the OpenDDS DataSampleHeader
     RtpsSampleHeader::populate_data_sample_submessages(
               subm, *dsle, requires_inline_qos);
-    durable = dsle->get_header().historic_sample_;
-
   } else if (tce) {  // Customized data message
     // {DataSampleHeader} -> {Content Filtering GUIDs} -> {Data Payload}
     data.reset(msg->cont()->cont()->duplicate());
@@ -1132,8 +1107,6 @@ RtpsUdpDataLink::RtpsWriter::customize_queue_element_helper(
     // Create RTPS Submessage(s) in place of the OpenDDS DataSampleHeader
     RtpsSampleHeader::populate_data_sample_submessages(
               subm, *dsle, requires_inline_qos);
-    durable = dsle->get_header().historic_sample_;
-
   } else {
     return element;
   }
@@ -1151,27 +1124,6 @@ RtpsUdpDataLink::RtpsWriter::customize_queue_element_helper(
   hdr->cont(data.release());
   RtpsCustomizedElement* rtps =
     new RtpsCustomizedElement(element, move(hdr));
-
-  // Handle durability resends
-  if (durable) {
-    const RepoId sub = element->subscription_id();
-    if (sub != GUID_UNKNOWN) {
-      ReaderInfoMap::iterator ri = remote_readers_.find(sub);
-      if (ri != remote_readers_.end()) {
-        ri->second.durable_data_[rtps->sequence()] = rtps;
-        ri->second.durable_timestamp_.set_to_now();
-        if (Transport_debug_level > 3) {
-          const GuidConverter conv(pub_id), sub_conv(sub);
-          ACE_DEBUG((LM_DEBUG,
-            "(%P|%t) RtpsUdpDataLink::customize_queue_element() - "
-            "storing durable data for local %C remote %C seq %q\n",
-            OPENDDS_STRING(conv).c_str(), OPENDDS_STRING(sub_conv).c_str(),
-            rtps->sequence().getValue()));
-        }
-        return 0;
-      }
-    }
-  }
 
   return rtps;
 }
@@ -1300,31 +1252,11 @@ RtpsUdpDataLink::RtpsWriter::end_historic_samples_i(const DataSampleHeader& head
     if (body && header.message_length_ >= sizeof(sub)) {
       std::memcpy(&sub, body->rd_ptr(), header.message_length_);
     }
-    typedef ReaderInfoMap::iterator iter_t;
     if (sub == GUID_UNKNOWN) {
       if (Transport_debug_level > 3) {
         const GuidConverter conv(id_);
         ACE_DEBUG((LM_DEBUG, "(%P|%t) RtpsUdpDataLink::end_historic_samples "
                    "local %C all readers\n", OPENDDS_STRING(conv).c_str()));
-      }
-      for (iter_t iter = remote_readers_.begin();
-           iter != remote_readers_.end(); ++iter) {
-        if (iter->second.durable_) {
-          iter->second.durable_timestamp_ = now;
-        }
-      }
-    } else {
-      iter_t iter = remote_readers_.find(sub);
-      if (iter != remote_readers_.end()) {
-        if (iter->second.durable_) {
-          iter->second.durable_timestamp_ = now;
-          if (Transport_debug_level > 3) {
-            const GuidConverter conv(id_), sub_conv(sub);
-            ACE_DEBUG((LM_DEBUG, "(%P|%t) RtpsUdpDataLink::end_historic_samples"
-                       " local %C remote %C\n", OPENDDS_STRING(conv).c_str(),
-                       OPENDDS_STRING(sub_conv).c_str()));
-          }
-        }
       }
     }
 
@@ -1448,13 +1380,8 @@ void
 RtpsUdpDataLink::received(const RTPS::DataSubmessage& data,
                           const GuidPrefix_t& src_prefix)
 {
-  RepoId local;
-  std::memcpy(local.guidPrefix, local_prefix_, sizeof(GuidPrefix_t));
-  local.entityId = data.readerId;
-
-  RepoId src;
-  std::memcpy(src.guidPrefix, src_prefix, sizeof(GuidPrefix_t));
-  src.entityId = data.writerId;
+  const RepoId local = RTPS::make_id(local_prefix_, data.readerId);
+  const RepoId src = RTPS::make_id(src_prefix, data.writerId);
 
   OPENDDS_VECTOR(RtpsReader_rch) to_call;
   {
@@ -1997,7 +1924,6 @@ RtpsUdpDataLink::RtpsWriter::remove_reader(const RepoId& id)
     ACE_Guard<ACE_Thread_Mutex> g(mutex_);
     ReaderInfoMap::iterator it = remote_readers_.find(id);
     if (it != remote_readers_.end()) {
-      it->second.swap_durable_data(dd);
       remote_readers_.erase(it);
       result = true;
     }
@@ -2730,14 +2656,7 @@ RtpsUdpDataLink::RtpsWriter::gather_gaps_i(const RepoId& reader,
     }
     for (ReaderInfoMap::iterator ri = remote_readers_.begin();
          ri != remote_readers_.end(); ++ri) {
-      if (!ri->second.expecting_durable_data()) {
-        readers.push_back(ri->first);
-      } else if (Transport_debug_level > 5) {
-        const GuidConverter remote_conv(ri->first);
-        ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::RtpsWriter::gather_gaps_i reader "
-                   "%C is expecting durable data, no GAP sent\n",
-                   OPENDDS_STRING(remote_conv).c_str()));
-      }
+      readers.push_back(ri->first);
     }
     for (size_t i = 0; i < readers.size(); ++i) {
       meta_submessage.dst_guid_ = readers[i];
@@ -2754,7 +2673,7 @@ RtpsUdpDataLink::RtpsWriter::gather_gaps_i(const RepoId& reader,
 void
 RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& acknack,
                                              const RepoId& src_prefix,
-                                             MetaSubmessageVec& meta_submessages)
+                                             MetaSubmessageVec&)
 {
   const RepoId remote = RTPS::make_id(src_prefix, acknack.readerId);
 
@@ -2796,116 +2715,6 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
   OPENDDS_MAP(SequenceNumber, TransportQueueElement*) pendingCallbacks;
   const bool is_final = acknack.smHeader.flags & RTPS::FLAG_F;
 
-  if (!ri->second.durable_data_.empty()) {
-    if (Transport_debug_level > 5) {
-      const GuidConverter local_conv(id_), remote_conv(remote);
-      ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                 "local %C has durable for remote %C\n",
-                 OPENDDS_STRING(local_conv).c_str(),
-                 OPENDDS_STRING(remote_conv).c_str()));
-    }
-    SequenceNumber ack;
-    ack.setValue(acknack.readerSNState.bitmapBase.high,
-                 acknack.readerSNState.bitmapBase.low);
-    const SequenceNumber& dd_last = ri->second.durable_data_.rbegin()->first;
-    if (Transport_debug_level > 5) {
-      ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                 "check ack %q against last durable %q\n",
-                 ack.getValue(), dd_last.getValue()));
-    }
-    if (ack > dd_last) {
-      // Reader acknowledges durable data, we no longer need to store it
-      ri->second.durable_data_.swap(pendingCallbacks);
-      if (Transport_debug_level > 5) {
-        ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                   "durable data acked\n"));
-      }
-    } else {
-      DisjointSequence requests;
-      if (!requests.insert(ack, acknack.readerSNState.numBits,
-                           acknack.readerSNState.bitmap.get_buffer())
-          && !is_final && ack == heartbeat_high(ri->second)) {
-        // This is a non-final AckNack with no bits in the bitmap.
-        // Attempt to reply to a request for the "base" value which
-        // is neither Acked nor Nacked, only when it's the HB high.
-        if (ri->second.durable_data_.count(ack)) requests.insert(ack);
-      }
-      // Attempt to reply to nacks for durable data
-      bool sent_some = false;
-      typedef OPENDDS_MAP(SequenceNumber, TransportQueueElement*)::iterator iter_t;
-      iter_t it = ri->second.durable_data_.begin();
-      const OPENDDS_VECTOR(SequenceRange) psr = requests.present_sequence_ranges();
-      SequenceNumber lastSent = SequenceNumber::ZERO();
-      if (!requests.empty()) {
-        lastSent = requests.low().previous();
-      }
-      DisjointSequence gaps;
-      for (size_t i = 0; i < psr.size(); ++i) {
-        for (; it != ri->second.durable_data_.end()
-             && it->first < psr[i].first; ++it) ; // empty for-loop
-        for (; it != ri->second.durable_data_.end()
-             && it->first <= psr[i].second; ++it) {
-          if (Transport_debug_level > 5) {
-            ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                       "durable resend %d\n", int(it->first.getValue())));
-          }
-          link->durability_resend(it->second);
-          //FUTURE: combine multiple resends into one RTPS Message?
-          sent_some = true;
-          if (it->first > lastSent + 1) {
-            gaps.insert(SequenceRange(lastSent + 1, it->first.previous()));
-          }
-          lastSent = it->first;
-        }
-        if (lastSent < psr[i].second && psr[i].second < dd_last) {
-          gaps.insert(SequenceRange(lastSent + 1, psr[i].second));
-          if (it != ri->second.durable_data_.end()) {
-            gaps.insert(SequenceRange(psr[i].second, it->first.previous()));
-          }
-        }
-      }
-      if (!gaps.empty()) {
-        if (Transport_debug_level > 5) {
-          ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                     "sending durability gaps:\n"));
-          gaps.dump();
-        }
-        gather_gaps_i(remote, gaps, meta_submessages);
-      }
-      if (sent_some) {
-        return;
-      }
-      const SequenceNumber& dd_first = ri->second.durable_data_.begin()->first;
-      if (!requests.empty() && requests.high() < dd_first) {
-        // All nacks were below the start of the durable data.
-          requests.insert(SequenceRange(requests.high(), dd_first.previous()));
-        if (Transport_debug_level > 5) {
-          ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                     "sending durability gaps for all requests:\n"));
-          requests.dump();
-        }
-        gather_gaps_i(remote, requests, meta_submessages);
-        return;
-      }
-      if (!requests.empty() && requests.low() < dd_first) {
-        // Lowest nack was below the start of the durable data.
-        for (size_t i = 0; i < psr.size(); ++i) {
-          if (psr[i].first > dd_first) {
-            break;
-          }
-          gaps.insert(SequenceRange(psr[i].first,
-                                    std::min(psr[i].second, dd_first)));
-        }
-        if (Transport_debug_level > 5) {
-          ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::received(ACKNACK) "
-                     "sending durability gaps for some requests:\n"));
-          gaps.dump();
-        }
-        gather_gaps_i(remote, gaps, meta_submessages);
-        return;
-      }
-    }
-  }
   SequenceNumber ack;
   ack.setValue(acknack.readerSNState.bitmapBase.high,
                acknack.readerSNState.bitmapBase.low);
@@ -3028,7 +2837,6 @@ RtpsUdpDataLink::RtpsWriter::send_and_gather_nack_replies(MetaSubmessageVec& met
     0 == std::memcmp(&pvs_writer, &id_.entityId, sizeof pvs_writer);
 #endif
 
-  bool gaps_ok = true;
   typedef ReaderInfoMap::iterator ri_iter;
   const ri_iter end = remote_readers_.end();
   for (ri_iter ri = remote_readers_.begin(); ri != end; ++ri) {
@@ -3050,9 +2858,6 @@ RtpsUdpDataLink::RtpsWriter::send_and_gather_nack_replies(MetaSubmessageVec& met
       AddrSet addrs = link->get_addresses(id_, ri->first);
       if (!addrs.empty()) {
         recipients.insert(addrs.begin(), addrs.end());
-        if (ri->second.expecting_durable_data()) {
-          gaps_ok = false;
-        }
         if (Transport_debug_level > 5) {
           const GuidConverter local_conv(id_), remote_conv(ri->first);
           ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_and_gather_nack_replies "
@@ -3088,7 +2893,7 @@ RtpsUdpDataLink::RtpsWriter::send_and_gather_nack_replies(MetaSubmessageVec& met
 
   send_nackfrag_replies_i(gaps, recipients);
 
-  if (gaps_ok && !gaps.empty()) {
+  if (!gaps.empty()) {
     if (Transport_debug_level > 5) {
       ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_nack_replies "
                  "GAPs:"));
@@ -3192,7 +2997,7 @@ RtpsUdpDataLink::RtpsWriter::process_requested_changes_i(DisjointSequence& reque
     base.setValue(sn_state.bitmapBase.high, sn_state.bitmapBase.low);
     if ((sn_state.numBits == 0 ||
          (sn_state.numBits == 1 && !(sn_state.bitmap[0] & 1)))
-        && base == heartbeat_high(reader)) {
+        && base == heartbeat_high()) {
       // Since there is an entry in requested_changes_, the DR must have
       // sent a non-final AckNack.  If the base value is the high end of
       // the heartbeat range, treat it as a request for that seq#.
@@ -3393,9 +3198,9 @@ RtpsUdpDataLink::send_heartbeats(const DCPS::MonotonicTimePoint& /*now*/)
   for (rw_iter rw = writers.begin(); rw != writers.end(); ++rw) {
     WtaMap::iterator it = writers_to_advertise.find(rw->first);
     if (it == writers_to_advertise.end()) {
-      rw->second->gather_heartbeats(pendingCallbacks, RepoIdSet(), true, meta_submessages);
+      rw->second->gather_heartbeats(RepoIdSet(), true, meta_submessages);
     } else {
-      if (rw->second->gather_heartbeats(pendingCallbacks, it->second, false, meta_submessages)) {
+      if (rw->second->gather_heartbeats(it->second, false, meta_submessages)) {
         writers_to_advertise.erase(it);
       }
     }
@@ -3435,8 +3240,7 @@ RtpsUdpDataLink::send_heartbeats(const DCPS::MonotonicTimePoint& /*now*/)
 }
 
 bool
-RtpsUdpDataLink::RtpsWriter::gather_heartbeats(OPENDDS_VECTOR(TransportQueueElement*)& pendingCallbacks,
-                                               const RepoIdSet& additional_guids,
+RtpsUdpDataLink::RtpsWriter::gather_heartbeats(const RepoIdSet& additional_guids,
                                                bool allow_final,
                                                MetaSubmessageVec& meta_submessages)
 {
@@ -3456,7 +3260,6 @@ RtpsUdpDataLink::RtpsWriter::gather_heartbeats(OPENDDS_VECTOR(TransportQueueElem
   meta_submessage.to_guids_ = additional_guids;
 
   const MonotonicTimePoint now = MonotonicTimePoint::now();
-  RtpsUdpInst& cfg = link->config();
 
   // Directed, non-final pre-association heartbeats
   RepoIdSet pre_assoc_hb_guids;
@@ -3471,33 +3274,6 @@ RtpsUdpDataLink::RtpsWriter::gather_heartbeats(OPENDDS_VECTOR(TransportQueueElem
     if (has_data) {
       meta_submessage.to_guids_.insert(ri->first);
       marked_to = true;
-    }
-    if (!ri->second.durable_data_.empty()) {
-      const MonotonicTimePoint expiration =
-        ri->second.durable_timestamp_ + cfg.durable_data_timeout_;
-      if (now > expiration) {
-        typedef OPENDDS_MAP(SequenceNumber, TransportQueueElement*)::iterator
-          dd_iter;
-        for (dd_iter it = ri->second.durable_data_.begin();
-             it != ri->second.durable_data_.end(); ++it) {
-          pendingCallbacks.push_back(it->second);
-        }
-        ri->second.durable_data_.clear();
-        if (Transport_debug_level > 3) {
-          const GuidConverter gw(id_), gr(ri->first);
-          VDBG_LVL((LM_INFO, "(%P|%t) RtpsUdpDataLink::gather_heartbeats - "
-            "removed expired durable data for %C -> %C\n",
-            OPENDDS_STRING(gw).c_str(), OPENDDS_STRING(gr).c_str()), 3);
-        }
-      } else {
-        has_durable_data = true;
-        is_final = false;
-        if (ri->second.durable_data_.rbegin()->first > durable_max) {
-          durable_max = ri->second.durable_data_.rbegin()->first;
-        }
-        meta_submessage.to_guids_.insert(ri->first);
-        marked_to = true;
-      }
     }
     if (!marked_to) {
       if (!ri->second.handshake_done_) {
@@ -3668,17 +3444,6 @@ RtpsUdpDataLink::RtpsWriter::send_heartbeats_manual_i(MetaSubmessageVec& meta_su
   const bool has_data = !send_buff_.is_nil() && !send_buff_->empty();
   SequenceNumber durable_max;
   const MonotonicTimePoint now = MonotonicTimePoint::now();
-  for (ReaderInfoMap::const_iterator ri = remote_readers_.begin(), end = remote_readers_.end();
-       ri != end;
-       ++ri) {
-    if (!ri->second.durable_data_.empty()) {
-      const MonotonicTimePoint expiration = ri->second.durable_timestamp_ + link->config().durable_data_timeout_;
-      if (now <= expiration &&
-          ri->second.durable_data_.rbegin()->first > durable_max) {
-        durable_max = ri->second.durable_data_.rbegin()->first;
-      }
-    }
-  }
 
   firstSN = (durable_ || !has_data) ? 1 : send_buff_->low();
   lastSN = std::max(durable_max, has_data ? send_buff_->high() : 1);
@@ -3789,30 +3554,6 @@ RtpsUdpDataLink::populate_security_handles(const RepoId& local_id,
 
 RtpsUdpDataLink::ReaderInfo::~ReaderInfo()
 {
-  expire_durable_data();
-}
-
-void
-RtpsUdpDataLink::ReaderInfo::swap_durable_data(OPENDDS_MAP(SequenceNumber, TransportQueueElement*)& dd)
-{
-  durable_data_.swap(dd);
-}
-
-void
-RtpsUdpDataLink::ReaderInfo::expire_durable_data()
-{
-  typedef OPENDDS_MAP(SequenceNumber, TransportQueueElement*)::iterator iter_t;
-  for (iter_t it = durable_data_.begin(); it != durable_data_.end(); ++it) {
-    it->second->data_dropped();
-  }
-}
-
-bool
-RtpsUdpDataLink::ReaderInfo::expecting_durable_data() const
-{
-  return durable_ &&
-    (durable_timestamp_.is_zero() // DW hasn't resent yet
-     || !durable_data_.empty()); // DW resent, not sent to reader
 }
 
 RtpsUdpDataLink::RtpsWriter::RtpsWriter(RcHandle<RtpsUdpDataLink> link, const RepoId& id, bool durable, CORBA::Long hbc, size_t capacity)
@@ -3838,13 +3579,9 @@ RtpsUdpDataLink::RtpsWriter::~RtpsWriter()
 }
 
 SequenceNumber
-RtpsUdpDataLink::RtpsWriter::heartbeat_high(const ReaderInfo& ri) const
+RtpsUdpDataLink::RtpsWriter::heartbeat_high() const
 {
-  const SequenceNumber durable_max =
-    ri.durable_data_.empty() ? 0 : ri.durable_data_.rbegin()->first;
-  const SequenceNumber data_max =
-    send_buff_.is_nil() ? 0 : (send_buff_->empty() ? 0 : send_buff_->high());
-  return std::max(durable_max, data_max);
+  return send_buff_.is_nil() ? 0 : (send_buff_->empty() ? 0 : send_buff_->high());
 }
 
 void

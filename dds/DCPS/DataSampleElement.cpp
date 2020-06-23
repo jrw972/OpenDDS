@@ -101,6 +101,12 @@ DataSampleElement::get_handle() const
   return handle_;
 }
 
+void
+DataSampleElement::reserialize_header()
+{
+  sample_->reset();
+  *sample_ << header_;
+}
 
 } // namespace DCPS
 } // namespace OpenDDS

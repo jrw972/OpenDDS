@@ -3063,11 +3063,10 @@ Sedp::Writer::replay_durable_data_for(const DCPS::RepoId& remote_sub_id)
 void Sedp::Writer::send_sample(const ACE_Message_Block& data,
                                size_t size,
                                const RepoId& reader,
-                               DCPS::SequenceNumber& sequence,
-                               bool historic)
+                               DCPS::SequenceNumber& sequence)
 {
   DCPS::DataSampleElement* el = new DCPS::DataSampleElement(repo_id_, this, DCPS::PublicationInstance_rch());
-  set_header_fields(el->get_header(), size, reader, sequence, historic);
+  set_header_fields(el->get_header(), size, reader, sequence);
 
   DCPS::Message_Block_Ptr sample(new ACE_Message_Block(size));
   el->set_sample(DCPS::move(sample));
@@ -3110,7 +3109,7 @@ Sedp::Writer::write_parameter_list(const ParameterList& plist,
             (ser << plist);
 
   if (ok) {
-    send_sample(payload, size, reader, sequence, reader != GUID_UNKNOWN);
+    send_sample(payload, size, reader, sequence);
 
   } else {
     result = DDS::RETCODE_ERROR;
@@ -3313,26 +3312,6 @@ Sedp::Writer::write_unregister_dispose(const RepoId& rid, CORBA::UShort pid)
                ACE_TEXT("(%P|%t) ERROR: Sedp::Writer::write_unregister_dispose")
                ACE_TEXT(" - Failed to serialize RTPS control message\n")));
     return DDS::RETCODE_ERROR;
-  }
-}
-
-void
-Sedp::Writer::end_historic_samples(const RepoId& reader)
-{
-  const void* pReader = static_cast<const void*>(&reader);
-  DCPS::Message_Block_Ptr mb(new ACE_Message_Block (DCPS::DataSampleHeader::max_marshaled_size(),
-                                                 ACE_Message_Block::MB_DATA,
-                                                 new ACE_Message_Block(static_cast<const char*>(pReader),
-                                                  sizeof(reader))));
-  if (mb.get()) {
-    mb->cont()->wr_ptr(sizeof(reader));
-    // 'mb' would contain the DSHeader, but we skip it. mb.cont() has the data
-    write_control_msg(move(mb), sizeof(reader), DCPS::END_HISTORIC_SAMPLES,
-                      DCPS::SequenceNumber::SEQUENCENUMBER_UNKNOWN());
-  } else {
-    ACE_ERROR((LM_ERROR,
-               ACE_TEXT("(%P|%t) ERROR: Sedp::Writer::end_historic_samples")
-               ACE_TEXT(" - Failed to allocate message block message\n")));
   }
 }
 
@@ -3767,7 +3746,6 @@ Sedp::write_durable_publication_data(const RepoId& reader, bool secure)
         write_publication_data_secure(pub->first, pub->second, reader);
       }
     }
-    publications_secure_writer_->end_historic_samples(reader);
 #endif
   } else {
     LocalPublicationIter pub, end = local_publications_.end();
@@ -3780,7 +3758,6 @@ Sedp::write_durable_publication_data(const RepoId& reader, bool secure)
       write_publication_data(pub->first, pub->second, reader);
 #endif
     }
-    publications_writer_->end_historic_samples(reader);
   }
 }
 
@@ -3803,7 +3780,6 @@ Sedp::write_durable_subscription_data(const RepoId& reader, bool secure)
         write_subscription_data_secure(sub->first, sub->second, reader);
       }
     }
-    subscriptions_secure_writer_->end_historic_samples(reader);
 #endif
   } else {
     LocalSubscriptionIter sub, end = local_subscriptions_.end();
@@ -3816,7 +3792,6 @@ Sedp::write_durable_subscription_data(const RepoId& reader, bool secure)
       write_subscription_data(sub->first, sub->second, reader);
 #endif
     }
-    subscriptions_writer_->end_historic_samples(reader);
   }
 }
 
@@ -3831,7 +3806,6 @@ Sedp::write_durable_participant_message_data(const RepoId& reader)
   for (part = local_participant_messages_.begin(); part != end; ++part) {
     write_participant_message_data(part->first, part->second, reader);
   }
-  participant_message_writer_->end_historic_samples(reader);
 }
 
 #ifdef OPENDDS_SECURITY
@@ -3863,7 +3837,6 @@ Sedp::write_durable_dcps_participant_secure(const DCPS::RepoId& reader)
   const Security::SPDPdiscoveredParticipantData& pdata = spdp_.build_local_pdata(Security::DPDK_SECURE);
 
   write_dcps_participant_secure(pdata, reader);
-  dcps_participant_secure_writer_->end_historic_samples(reader);
 }
 
 DDS::ReturnCode_t
