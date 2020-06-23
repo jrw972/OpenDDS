@@ -356,9 +356,13 @@ private:
                        const DisjointSequence& gaps,
                        MetaSubmessageVec& meta_submessages);
     void acked_by_all_helper_i(TqeSet& to_deliver);
-    void send_directed_nack_replies_i(const RepoId& readerId, ReaderInfo& reader, MetaSubmessageVec& meta_submessages);
+    bool send_directed_nack_replies_i(const RepoId& readerId,
+                                      ReaderInfo& reader,
+                                      AddrSet& recipients,
+                                      DisjointSequence& non_directed_requests,
+                                      DisjointSequence& non_directed_gaps);
     void process_requested_changes_i(DisjointSequence& requests, const ReaderInfo& reader);
-    void send_nackfrag_replies_i(DisjointSequence& gaps, AddrSet& gap_recipients);
+    void send_nackfrag_replies_i(DisjointSequence& gaps);
 
   public:
     RtpsWriter(RcHandle<RtpsUdpDataLink> link, const RepoId& id, bool durable, CORBA::Long hbc, size_t capacity);

@@ -715,9 +715,74 @@ DataWriterImpl::remove_associations(const ReaderIdSeq & readers,
   }
 }
 
-void DataWriterImpl::replay_durable_data_for(const RepoId& remote_sub_id)
+void DataWriterImpl::replay_durable_data_for(const RepoId& remote_id)
 {
-  ACE_DEBUG((LM_DEBUG, "DataWriterImpl::replay_durable_data_for TODO\n"));
+  ACE_DEBUG((LM_DEBUG, "Replay durable for %C\n", OPENDDS_STRING(GuidConverter(remote_id)).c_str()));
+
+  bool reader_durable = false;
+#ifndef OPENDDS_NO_CONTENT_FILTERED_TOPIC
+  OPENDDS_STRING filterClassName;
+  RcHandle<FilterEvaluator> eval;
+  DDS::StringSeq expression_params;
+#endif
+
+  {
+    ACE_GUARD(ACE_Thread_Mutex, reader_info_guard, this->reader_info_lock_);
+    RepoIdToReaderInfoMap::const_iterator it = reader_info_.find(remote_id);
+
+    if (it == reader_info_.end()) {
+      return;
+    }
+
+    reader_durable = it->second.durable_;
+#ifndef OPENDDS_NO_CONTENT_FILTERED_TOPIC
+    filterClassName = it->second.filter_class_name_;
+    eval = it->second.eval_;
+    expression_params = it->second.expression_params_;
+#endif
+  }
+
+
+  if (!reader_durable) {
+    return;
+  }
+
+  // Tell the WriteDataContainer to resend all sending/sent
+  // samples.
+  this->data_container_->reenqueue_all(remote_id, this->qos_.lifespan
+#ifndef OPENDDS_NO_CONTENT_FILTERED_TOPIC
+                                       , filterClassName, eval.in(), expression_params
+#endif
+                                       );
+
+  ACE_GUARD(ACE_Recursive_Thread_Mutex,
+            guard,
+            this->get_lock());
+
+  SendStateDataSampleList list = this->get_resend_data();
+  {
+    ACE_GUARD(ACE_Thread_Mutex, reader_info_guard, this->reader_info_lock_);
+    // Update the reader's expected sequence
+    SequenceNumber& seq =
+      reader_info_.find(remote_id)->second.expected_sequence_;
+
+    for (SendStateDataSampleList::iterator list_el = list.begin();
+         list_el != list.end(); ++list_el) {
+      seq = list_el->get_header().sequence_ = ++this->sequence_number_;
+      list_el->get_header().historic_sample_ = false;
+      list_el->reserialize_header();
+      ACE_DEBUG((LM_DEBUG, "Replay durable for %C new sequence number\n", OPENDDS_STRING(GuidConverter(remote_id)).c_str()));
+    }
+  }
+
+  RcHandle<PublisherImpl> publisher = this->publisher_servant_.lock();
+  if (!publisher || publisher->is_suspended()) {
+    this->available_data_list_.enqueue_tail(list);
+  } else {
+    this->controlTracker.message_sent();
+    guard.release();
+    send(list);
+  }
 }
 
 void DataWriterImpl::remove_all_associations()

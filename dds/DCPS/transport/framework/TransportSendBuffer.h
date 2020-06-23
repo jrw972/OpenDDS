@@ -89,8 +89,12 @@ public:
 
   // caller must already have the send strategy lock
   bool resend_i(const SequenceRange& range, DisjointSequence* gaps = 0);
-  bool resend_i(const SequenceRange& range, DisjointSequence* gaps,
-                const RepoId& destination);
+  bool resend_i(const SequenceRange& range,
+                const RepoId& destination,
+                bool& any_non_directed,
+                DisjointSequence& non_directed_requests,
+                DisjointSequence& non_directed_gaps,
+                DisjointSequence& directed_gaps);
 
   void resend_fragments_i(const SequenceNumber& sequence,
                           const DisjointSequence& fragments);

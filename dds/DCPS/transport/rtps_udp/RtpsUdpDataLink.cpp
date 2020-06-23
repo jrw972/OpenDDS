@@ -896,15 +896,15 @@ RtpsUdpDataLink::release_reservations_i(const RepoId& remote_id,
 
       reader->remove_writer(remote_id);
 
-      if (reader->writer_count() == 0) {
-        {
-          ACE_GUARD(ACE_Thread_Mutex, h, readers_lock_);
-          rr = readers_.find(local_id);
-          if (rr != readers_.end()) {
-            readers_.erase(rr);
-          }
-        }
-      }
+      // if (reader->writer_count() == 0) {
+      //   {
+      //     ACE_GUARD(ACE_Thread_Mutex, h, readers_lock_);
+      //     rr = readers_.find(local_id);
+      //     if (rr != readers_.end()) {
+      //       readers_.erase(rr);
+      //     }
+      //   }
+      // }
     } else {
       WriterToSeqReadersMap::iterator w = writer_to_seq_best_effort_readers_.find(remote_id);
       if (w != writer_to_seq_best_effort_readers_.end()) {
@@ -2184,6 +2184,8 @@ RtpsUdpDataLink::RtpsReader::gather_ack_nacks_i(MetaSubmessageVec& meta_submessa
         },
         {++acknack_count_}
       };
+      ACE_DEBUG((LM_DEBUG, "sending acknack (1) %C -> %C this=%@ count=%d\n", OPENDDS_STRING(GuidConverter(id_)).c_str(), OPENDDS_STRING(GuidConverter(wi->first)).c_str(), this, acknack_count_));
+
       meta_submessage.sm_.acknack_sm(acknack);
 
       meta_submessages.push_back(meta_submessage);
@@ -2757,12 +2759,14 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
                                              MetaSubmessageVec& meta_submessages)
 {
   const RepoId remote = RTPS::make_id(src_prefix, acknack.readerId);
+  ACE_DEBUG((LM_DEBUG, "process_acknack %C\n", OPENDDS_STRING(GuidConverter(remote)).c_str()));
 
   ACE_GUARD(ACE_Thread_Mutex, g, mutex_);
 
   RtpsUdpDataLink_rch link = link_.lock();
 
   if (!link) {
+    ACE_DEBUG((LM_DEBUG, "process_acknack 1\n"));
     return;
   }
 
@@ -2779,12 +2783,14 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
   if (ri == remote_readers_.end()) {
     VDBG((LM_WARNING, "(%P|%t) RtpsUdpDataLink::received(ACKNACK) "
       "WARNING ReaderInfo not found\n"));
+    ACE_DEBUG((LM_DEBUG, "process_acknack 2\n"));
     return;
   }
 
   if (!compare_and_update_counts(acknack.count.value, ri->second.acknack_recvd_count_)) {
     VDBG((LM_WARNING, "(%P|%t) RtpsUdpDataLink::received(ACKNACK) "
       "WARNING Count indicates duplicate, dropping\n"));
+    ACE_DEBUG((LM_DEBUG, "process_acknack 3\n"));
     return;
   }
 
@@ -2873,6 +2879,7 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
         gather_gaps_i(remote, gaps, meta_submessages);
       }
       if (sent_some) {
+        ACE_DEBUG((LM_DEBUG, "process_acknack 4\n"));
         return;
       }
       const SequenceNumber& dd_first = ri->second.durable_data_.begin()->first;
@@ -2885,6 +2892,7 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
           requests.dump();
         }
         gather_gaps_i(remote, requests, meta_submessages);
+        ACE_DEBUG((LM_DEBUG, "process_acknack 5\n"));
         return;
       }
       if (!requests.empty() && requests.low() < dd_first) {
@@ -2902,6 +2910,7 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
           gaps.dump();
         }
         gather_gaps_i(remote, gaps, meta_submessages);
+        ACE_DEBUG((LM_DEBUG, "process_acknack 6\n"));
         return;
       }
     }
@@ -2953,6 +2962,8 @@ RtpsUdpDataLink::RtpsWriter::process_acknack(const RTPS::AckNackSubmessage& ackn
   if (first_ack) {
     link->invoke_on_start_callbacks(id_, remote, true);
   }
+
+  ACE_DEBUG((LM_DEBUG, "process_acknack 7\n"));
 }
 
 void
@@ -3006,6 +3017,7 @@ void RtpsUdpDataLink::RtpsWriter::process_nackfrag(const RTPS::NackFragSubmessag
 void
 RtpsUdpDataLink::RtpsWriter::send_and_gather_nack_replies(MetaSubmessageVec& meta_submessages)
 {
+  ACE_DEBUG((LM_DEBUG, "send_and_gather_nack_replies writer=%C\n", OPENDDS_STRING(GuidConverter(id_)).c_str()));
   ACE_GUARD(ACE_Thread_Mutex, g, mutex_);
 
   RtpsUdpDataLink_rch link = link_.lock();
@@ -3016,85 +3028,54 @@ RtpsUdpDataLink::RtpsWriter::send_and_gather_nack_replies(MetaSubmessageVec& met
 
   // consolidate requests from N readers
   AddrSet recipients;
-  DisjointSequence requests;
+  DisjointSequence non_directed_requests;
+  DisjointSequence non_directed_gaps;
 
   //track if any messages have been fully acked by all readers
   SequenceNumber all_readers_ack = SequenceNumber::MAX_VALUE;
-
-#ifdef OPENDDS_SECURITY
-  const EntityId_t& pvs_writer =
-    RTPS::ENTITYID_P2P_BUILTIN_PARTICIPANT_VOLATILE_SECURE_WRITER;
-  const bool is_pvs_writer =
-    0 == std::memcmp(&pvs_writer, &id_.entityId, sizeof pvs_writer);
-#endif
 
   bool gaps_ok = true;
   typedef ReaderInfoMap::iterator ri_iter;
   const ri_iter end = remote_readers_.end();
   for (ri_iter ri = remote_readers_.begin(); ri != end; ++ri) {
-
     if (ri->second.cur_cumulative_ack_ < all_readers_ack) {
       all_readers_ack = ri->second.cur_cumulative_ack_;
     }
 
-#ifdef OPENDDS_SECURITY
-    if (is_pvs_writer && !ri->second.requested_changes_.empty()) {
-      send_directed_nack_replies_i(ri->first, ri->second, meta_submessages);
-      continue;
-    }
-#endif
-
-    process_requested_changes_i(requests, ri->second);
-
-    if (!ri->second.requested_changes_.empty()) {
-      AddrSet addrs = link->get_addresses(id_, ri->first);
-      if (!addrs.empty()) {
-        recipients.insert(addrs.begin(), addrs.end());
-        if (ri->second.expecting_durable_data()) {
-          gaps_ok = false;
-        }
-        if (Transport_debug_level > 5) {
-          const GuidConverter local_conv(id_), remote_conv(ri->first);
-          ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_and_gather_nack_replies "
-                     "local %C remote %C requested resend\n",
-                     OPENDDS_STRING(local_conv).c_str(),
-                     OPENDDS_STRING(remote_conv).c_str()));
-        }
-      }
-      ri->second.requested_changes_.clear();
+    if (send_directed_nack_replies_i(ri->first, ri->second, recipients, non_directed_requests, non_directed_gaps) && ri->second.expecting_durable_data()) {
+      // If we change durability to always use new sequence numbers, I think we won't need this.
+      gaps_ok = false;
     }
   }
 
-  DisjointSequence gaps;
-  if (!requests.empty()) {
-    if (send_buff_.is_nil() || send_buff_->empty()) {
-      gaps = requests;
-    } else {
-      OPENDDS_VECTOR(SequenceRange) ranges = requests.present_sequence_ranges();
-      SingleSendBuffer& sb = *send_buff_;
-      ACE_GUARD(TransportSendBuffer::LockType, guard, sb.strategy_lock());
-      const RtpsUdpSendStrategy::OverrideToken ot =
-        link->send_strategy()->override_destinations(recipients);
-      for (size_t i = 0; i < ranges.size(); ++i) {
-        if (Transport_debug_level > 5) {
-          ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_nack_replies "
-                     "resend data %d-%d\n", int(ranges[i].first.getValue()),
-                     int(ranges[i].second.getValue())));
-        }
-        sb.resend_i(ranges[i], &gaps);
+  if (!non_directed_requests.empty()) {
+    OPENDDS_VECTOR(SequenceRange) ranges = non_directed_requests.present_sequence_ranges();
+    SingleSendBuffer& sb = *send_buff_;
+    ACE_GUARD(TransportSendBuffer::LockType, guard, sb.strategy_lock());
+    const RtpsUdpSendStrategy::OverrideToken ot =
+      link->send_strategy()->override_destinations(recipients);
+    for (size_t i = 0; i < ranges.size(); ++i) {
+      if (Transport_debug_level > 5) {
+        ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_nack_replies "
+                   "resend data %d-%d\n", int(ranges[i].first.getValue()),
+                   int(ranges[i].second.getValue())));
       }
+      ACE_DEBUG((LM_DEBUG, "send_and_gather_nack_replies_i sample to all readers\n"));
+      sb.resend_i(ranges[i]);
     }
   }
 
-  send_nackfrag_replies_i(gaps, recipients);
+  send_nackfrag_replies_i(non_directed_gaps);
 
-  if (gaps_ok && !gaps.empty()) {
+  if (gaps_ok && !non_directed_gaps.empty()) {
     if (Transport_debug_level > 5) {
       ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_nack_replies "
                  "GAPs:"));
-      gaps.dump();
+      non_directed_gaps.dump();
     }
-    gather_gaps_i(GUID_UNKNOWN, gaps, meta_submessages);
+    ACE_DEBUG((LM_DEBUG, "send_and_gather_nack_replies_i gap to all readers\n"));
+    non_directed_gaps.dump();
+    gather_gaps_i(GUID_UNKNOWN, non_directed_gaps, meta_submessages);
   }
 }
 
@@ -3120,8 +3101,7 @@ RtpsUdpDataLink::send_nack_replies()
 }
 
 void
-RtpsUdpDataLink::RtpsWriter::send_nackfrag_replies_i(DisjointSequence& gaps,
-                                                     AddrSet& gap_recipients)
+RtpsUdpDataLink::RtpsWriter::send_nackfrag_replies_i(DisjointSequence& gaps)
 {
   RtpsUdpDataLink_rch link = link_.lock();
 
@@ -3159,7 +3139,6 @@ RtpsUdpDataLink::RtpsWriter::send_nackfrag_replies_i(DisjointSequence& gaps,
         }
       } else {
         gaps.insert(seq);
-        gap_recipients.insert(remote_addrs.begin(), remote_addrs.end());
       }
     }
     ri->second.requested_frags_.clear();
@@ -3205,20 +3184,17 @@ RtpsUdpDataLink::RtpsWriter::process_requested_changes_i(DisjointSequence& reque
   }
 }
 
-void
+bool
 RtpsUdpDataLink::RtpsWriter::send_directed_nack_replies_i(const RepoId& readerId,
                                                           ReaderInfo& reader,
-                                                          MetaSubmessageVec& meta_submessages)
+                                                          AddrSet& recipients,
+                                                          DisjointSequence& non_directed_requests,
+                                                          DisjointSequence& non_directed_gaps)
 {
   RtpsUdpDataLink_rch link = link_.lock();
 
   if (!link) {
-    return;
-  }
-
-  AddrSet addrs = link->get_addresses(id_, readerId);
-  if (addrs.empty()) {
-    return;
+    return false;
   }
 
   DisjointSequence requests;
@@ -3226,36 +3202,56 @@ RtpsUdpDataLink::RtpsWriter::send_directed_nack_replies_i(const RepoId& readerId
   reader.requires_heartbeat_ = requests.empty();
   reader.requested_changes_.clear();
 
-  DisjointSequence gaps;
+  if (requests.empty()) {
+    return false;
+  }
 
-  if (!requests.empty()) {
-    if (send_buff_.is_nil() || send_buff_->empty()) {
-      gaps = requests;
-    } else {
-      OPENDDS_VECTOR(SequenceRange) ranges = requests.present_sequence_ranges();
-      SingleSendBuffer& sb = *send_buff_;
-      ACE_GUARD(TransportSendBuffer::LockType, guard, sb.strategy_lock());
-      const RtpsUdpSendStrategy::OverrideToken ot =
-        link->send_strategy()->override_destinations(addrs);
-      for (size_t i = 0; i < ranges.size(); ++i) {
-        if (Transport_debug_level > 5) {
-          ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_directed_nack_replies "
-                     "resend data %d-%d\n", int(ranges[i].first.getValue()),
-                     int(ranges[i].second.getValue())));
-        }
-        sb.resend_i(ranges[i], &gaps, readerId);
+  AddrSet addrs = link->get_addresses(id_, readerId);
+  if (addrs.empty()) {
+    return false;
+  }
+
+  bool any_non_directed = false;
+  DisjointSequence directed_gaps;
+  if (send_buff_.is_nil() || send_buff_->empty()) {
+    directed_gaps = requests;
+  } else {
+    OPENDDS_VECTOR(SequenceRange) ranges = requests.present_sequence_ranges();
+    SingleSendBuffer& sb = *send_buff_;
+    ACE_GUARD_RETURN(TransportSendBuffer::LockType, guard, sb.strategy_lock(), false);
+    const RtpsUdpSendStrategy::OverrideToken ot =
+      link->send_strategy()->override_destinations(addrs);
+    for (size_t i = 0; i < ranges.size(); ++i) {
+      if (Transport_debug_level > 5) {
+        ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_directed_nack_replies "
+                   "resend data %d-%d\n", int(ranges[i].first.getValue()),
+                   int(ranges[i].second.getValue())));
       }
+      ACE_DEBUG((LM_DEBUG, "send_directed_nack_replies_i sample to %C\n", OPENDDS_STRING(GuidConverter(readerId)).c_str()));
+      sb.resend_i(ranges[i], readerId, any_non_directed, non_directed_requests, non_directed_gaps, directed_gaps);
     }
   }
 
-  if (gaps.empty()) {
-    return;
+  if (any_non_directed) {
+    recipients.insert(addrs.begin(), addrs.end());
+  }
+
+  if (directed_gaps.empty()) {
+    return true;
   }
   if (Transport_debug_level > 5) {
     ACE_DEBUG((LM_DEBUG, "RtpsUdpDataLink::send_directed_nack_replies GAPs: "));
-    gaps.dump();
+    directed_gaps.dump();
   }
-  gather_gaps_i(readerId, gaps, meta_submessages);
+
+  ACE_DEBUG((LM_DEBUG, "send_directed_nack_replies_i gaps to %C\n", OPENDDS_STRING(GuidConverter(readerId)).c_str()));
+  directed_gaps.dump();
+
+  MetaSubmessageVec meta_submessages;
+  gather_gaps_i(readerId, directed_gaps, meta_submessages);
+  link->send_bundled_submessages(meta_submessages);
+
+  return true;
 }
 
 void

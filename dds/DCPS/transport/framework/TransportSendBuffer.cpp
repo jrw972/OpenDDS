@@ -360,16 +360,8 @@ SingleSendBuffer::resend(const SequenceRange& range, DisjointSequence* gaps)
 bool
 SingleSendBuffer::resend_i(const SequenceRange& range, DisjointSequence* gaps)
 {
-  return resend_i(range, gaps, GUID_UNKNOWN);
-}
-
-bool
-SingleSendBuffer::resend_i(const SequenceRange& range, DisjointSequence* gaps,
-                           const RepoId& destination)
-{
   //Special case, nak to make sure it has all history
   const SequenceNumber lowForAllResent = range.first == SequenceNumber() ? low() : range.first;
-  const bool has_dest = destination != GUID_UNKNOWN;
 
   for (SequenceNumber sequence(range.first);
        sequence <= range.second; ++sequence) {
@@ -378,14 +370,60 @@ SingleSendBuffer::resend_i(const SequenceRange& range, DisjointSequence* gaps,
     // will be scored against the given DisjointSequence:
     BufferMap::iterator it(buffers_.find(sequence));
     DestinationMap::iterator dest_data;
-    if (has_dest) {
-      dest_data = destinations_.find(sequence);
-    }
-    if (it == buffers_.end() || (has_dest && (dest_data == destinations_.end() ||
-                                              dest_data->second != destination))) {
+    if (it == buffers_.end()) {
       if (gaps) {
         gaps->insert(sequence);
       }
+    } else {
+      if (Transport_debug_level > 5) {
+        ACE_DEBUG((LM_DEBUG,
+                   ACE_TEXT("(%P|%t) SingleSendBuffer::resend() - ")
+                   ACE_TEXT("resending PDU: %q, (0x%@,0x%@)\n"),
+                   sequence.getValue(),
+                   it->second.first,
+                   it->second.second));
+      }
+      if (it->second.first && it->second.second) {
+        resend_one(it->second);
+      } else {
+        const FragmentMap::iterator fm_it = fragments_.find(it->first);
+        if (fm_it != fragments_.end()) {
+          for (BufferMap::iterator bm_it = fm_it->second.begin();
+                bm_it != fm_it->second.end(); ++bm_it) {
+            resend_one(bm_it->second);
+          }
+        }
+      }
+    }
+  }
+  // Have we resent all requested data?
+  return lowForAllResent >= low() && range.second <= high();
+}
+
+bool
+SingleSendBuffer::resend_i(const SequenceRange& range,
+                           const RepoId& destination,
+                           bool& any_non_directed,
+                           DisjointSequence& non_directed_requests,
+                           DisjointSequence& non_directed_gaps,
+                           DisjointSequence& directed_gaps)
+{
+  //Special case, nak to make sure it has all history
+  const SequenceNumber lowForAllResent = range.first == SequenceNumber() ? low() : range.first;
+
+  for (SequenceNumber sequence(range.first);
+       sequence <= range.second; ++sequence) {
+    ACE_GUARD_RETURN(ACE_Thread_Mutex, g, mutex_, false);
+    BufferMap::iterator it(buffers_.find(sequence));
+    DestinationMap::iterator dest_data = destinations_.find(sequence);
+    if (it == buffers_.end()) {
+      non_directed_gaps.insert(sequence);
+      any_non_directed = true;
+    } else if (dest_data == destinations_.end()) {
+      non_directed_requests.insert(sequence);
+      any_non_directed = true;
+    } else if (dest_data->second != destination) {
+      directed_gaps.insert(sequence);
     } else {
       if (Transport_debug_level > 5) {
         ACE_DEBUG((LM_DEBUG,

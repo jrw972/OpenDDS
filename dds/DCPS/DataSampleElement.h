@@ -97,6 +97,8 @@ public:
 
   ACE_UINT64 transaction_id() const;
 
+  void reserialize_header();
+
 private:
 
   ACE_UINT64 transaction_id_;
