@@ -1962,6 +1962,7 @@ Sedp::Task::acknowledge()
 {
   // id is really a don't care, but just set to REQUEST_ACK
   putq(new Msg(Msg::MSG_FINI_BIT, DCPS::REQUEST_ACK, 0));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::acknowledge putq %d"), msg_queue()->message_count()));
 }
 
 void
@@ -1970,6 +1971,7 @@ Sedp::Task::shutdown()
   if (!shutting_down_) {
     shutting_down_ = true;
     putq(new Msg(Msg::MSG_STOP, DCPS::GRACEFUL_DISCONNECT, 0));
+    ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::shutdown putq %d"), msg_queue()->message_count()));
     wait();
   }
 }
@@ -4349,6 +4351,7 @@ Sedp::Task::enqueue(DCPS::MessageId id, DCPS::unique_ptr<ParticipantData_t> pdat
 #endif
 
   putq(new Msg(type, id, pdata.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue ParticipantData_t %d putq %d"), bSecureParticipant, msg_queue()->message_count()));
 }
 
 void
@@ -4356,6 +4359,7 @@ Sedp::Task::enqueue(DCPS::MessageId id, DCPS::unique_ptr<DiscoveredPublication> 
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_WRITER, id, wdata.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue DiscoveredPublication putq %d"), msg_queue()->message_count()));
 }
 
 #ifdef OPENDDS_SECURITY
@@ -4364,6 +4368,7 @@ Sedp::Task::enqueue(DCPS::MessageId id, DCPS::unique_ptr<DiscoveredPublication_S
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_WRITER_SECURE, id, wrapper.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue DiscoveredPublication_SecurityWrapper putq %d"), msg_queue()->message_count()));
 }
 #endif
 
@@ -4372,6 +4377,7 @@ Sedp::Task::enqueue(DCPS::MessageId id, DCPS::unique_ptr<DiscoveredSubscription>
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_READER, id, rdata.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue DiscoveredSubscription putq %d"), msg_queue()->message_count()));
 }
 
 #ifdef OPENDDS_SECURITY
@@ -4380,6 +4386,7 @@ Sedp::Task::enqueue(DCPS::MessageId id, DCPS::unique_ptr<DiscoveredSubscription_
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_READER_SECURE, id, wrapper.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue DiscoveredSubscription_SecurityWrapper putq %d"), msg_queue()->message_count()));
 }
 #endif
 
@@ -4388,6 +4395,7 @@ Sedp::Task::enqueue(DCPS::MessageId id, DCPS::unique_ptr<ParticipantMessageData>
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_PARTICIPANT_DATA, id, data.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue ParticipantMessageData putq %d"), msg_queue()->message_count()));
 }
 
 void
@@ -4396,6 +4404,7 @@ Sedp::Task::enqueue(Msg::MsgType which_bit, const DDS::InstanceHandle_t bit_ih)
 #ifndef DDS_HAS_MINIMUM_BIT
   if (shutting_down_) { return; }
   putq(new Msg(which_bit, DCPS::DISPOSE_INSTANCE, bit_ih));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue InstanceHandle_t dispose putq %d"), msg_queue()->message_count()));
 #else
   ACE_UNUSED_ARG(which_bit);
   ACE_UNUSED_ARG(bit_ih);
@@ -4408,6 +4417,7 @@ Sedp::Task::enqueue_participant_message_secure(DCPS::MessageId id, DCPS::unique_
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_PARTICIPANT_DATA_SECURE, id, data.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue_participant_message_secure ParticipantMessageData putq %d"), msg_queue()->message_count()));
 }
 
 void
@@ -4415,6 +4425,7 @@ Sedp::Task::enqueue_stateless_message(DCPS::MessageId id, DCPS::unique_ptr<DDS::
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_PARTICIPANT_STATELESS_DATA, id, data.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue_stateless_message ParticipantStatelessMessage putq %d"), msg_queue()->message_count()));
 }
 
 void
@@ -4423,6 +4434,7 @@ Sedp::Task::enqueue_volatile_message_secure(
 {
   if (shutting_down_) { return; }
   putq(new Msg(Msg::MSG_PARTICIPANT_VOLATILE_SECURE, id, data.release()));
+  ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::enqueue_volatile_message_secure ParticipantVolatileMessageSecure putq %d"), msg_queue()->message_count()));
 }
 #endif
 
@@ -4430,11 +4442,9 @@ int
 Sedp::Task::svc()
 {
   for (Msg* msg = 0; getq(msg) != -1; /*no increment*/) {
-    if (DCPS::DCPS_debug_level > 5) {
-      ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::svc ")
-        ACE_TEXT("got message from queue type %C\n"),
-        msg->msgTypeToString()));
-    }
+    ACE_DEBUG((LM_DEBUG, ACE_TEXT("(%P|%t) Sedp::Task::svc ")
+               ACE_TEXT("got message from queue type %C %d\n"),
+               msg->msgTypeToString(), msg_queue()->message_count()));
 
     DCPS::unique_ptr<Msg> delete_the_msg(msg);
     switch (msg->type_) {
