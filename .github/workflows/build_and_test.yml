@@ -4253,7 +4253,7 @@ jobs:
         path: MPC
     - name: set up msvc env
       if: steps.cache-artifact.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: configure OpenDDS
       if: steps.cache-artifact.outputs.cache-hit != 'true'
       shell: cmd
@@ -4328,7 +4328,7 @@ jobs:
         rm -f ACE_TAO_w19_p1_stat_js0.tar.xz
     - uses: ammaraskar/msvc-problem-matcher@0.1
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -4501,7 +4501,7 @@ jobs:
         tar xvfJ build_w19_p1_stat_js0.tar.xz
         rm -f build_w19_p1_stat_js0.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -4655,7 +4655,7 @@ jobs:
         tar xvfJ build_w19_p1_stat_js0.tar.xz
         rm -f build_w19_p1_stat_js0.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -4796,7 +4796,7 @@ jobs:
         tar xvfJ build_w19_p1_stat_js0.tar.xz
         rm -f build_w19_p1_stat_js0.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -4923,7 +4923,7 @@ jobs:
         path: MPC
     - name: set up msvc env
       if: steps.cache-artifact.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: configure OpenDDS
       if: steps.cache-artifact.outputs.cache-hit != 'true'
       shell: cmd
@@ -4998,7 +4998,7 @@ jobs:
         rm -f ACE_TAO_w19_re_p1_stat_FM-08.tar.xz
     - uses: ammaraskar/msvc-problem-matcher@0.1
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -5100,7 +5100,7 @@ jobs:
         tar xvfJ build_w19_re_p1_stat_FM-08.tar.xz
         rm -f build_w19_re_p1_stat_FM-08.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -5254,7 +5254,7 @@ jobs:
         tar xvfJ build_w19_re_p1_stat_FM-08.tar.xz
         rm -f build_w19_re_p1_stat_FM-08.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -5394,7 +5394,7 @@ jobs:
         tar xvfJ build_w19_re_p1_stat_FM-08.tar.xz
         rm -f build_w19_re_p1_stat_FM-08.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -5521,7 +5521,7 @@ jobs:
         path: MPC
     - name: set up msvc env
       if: steps.cache-artifact.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: configure OpenDDS
       if: steps.cache-artifact.outputs.cache-hit != 'true'
       shell: cmd
@@ -5596,7 +5596,7 @@ jobs:
         rm -f ACE_TAO_w19_re_o1p1_sec.tar.xz
     - uses: ammaraskar/msvc-problem-matcher@0.1
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -5705,7 +5705,7 @@ jobs:
         tar xvfJ build_w19_re_o1p1_sec.tar.xz
         rm -f build_w19_re_o1p1_sec.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -5859,7 +5859,7 @@ jobs:
         tar xvfJ build_w19_re_o1p1_sec.tar.xz
         rm -f build_w19_re_o1p1_sec.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: check build configuration
       shell: cmd
       run: |
@@ -5988,7 +5988,7 @@ jobs:
         tar xvfJ ACE_TAO_w19_re_o1p1_sec.tar.xz
         rm -f ACE_TAO_w19_re_o1p1_sec.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: download OpenDDS artifact
       uses: actions/download-artifact@v2
       with:
@@ -6117,7 +6117,7 @@ jobs:
         path: winflexbison
     - name: set up msvc env
       if: steps.cache-artifact.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: build WinFlexBison
       if: steps.cache-artifact.outputs.cache-hit != 'true'
       uses: lukka/run-cmake@v3
@@ -6197,7 +6197,7 @@ jobs:
         path: MPC
     - name: set up msvc env
       if: steps.cache-artifact.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: configure OpenDDS
       if: steps.cache-artifact.outputs.cache-hit != 'true'
       shell: cmd
@@ -6283,7 +6283,7 @@ jobs:
     - name: set up MSVC problem matcher
       uses: ammaraskar/msvc-problem-matcher@0.1
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: setup gtest
       shell: cmd
       run: |
@@ -6307,7 +6307,7 @@ jobs:
         call setenv.cmd
         perl tools\scripts\show_build_config.pl
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: build OpenDDS
       shell: cmd
       run: |
@@ -6387,7 +6387,7 @@ jobs:
         tar xvfJ build_w19_re_j_ws_FM-1f.tar.xz
         rm -f build_w19_re_j_ws_FM-1f.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: check build configuration
       shell: cmd
       run: |
@@ -6541,7 +6541,7 @@ jobs:
         tar xvfJ build_w19_re_j_ws_FM-1f.tar.xz
         rm -f build_w19_re_j_ws_FM-1f.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: check build configuration
       shell: cmd
       run: |
@@ -6681,7 +6681,7 @@ jobs:
         tar xvfJ build_w19_re_j_ws_FM-1f.tar.xz
         rm -f build_w19_re_j_ws_FM-1f.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: check build configuration
       shell: cmd
       run: |
@@ -6815,7 +6815,7 @@ jobs:
         path: MPC
     - name: set up msvc env
       if: steps.cache-artifact.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
       with:
         arch: x86
     - name: configure OpenDDS
@@ -6903,7 +6903,7 @@ jobs:
         mv MPC /c/
     - uses: ammaraskar/msvc-problem-matcher@0.1
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
       with:
         arch: x86
     - name: configure OpenDDS
@@ -7002,7 +7002,7 @@ jobs:
         tar xvfJ build_w16_x86_d0i0_sec.tar.xz
         rm -f build_w16_x86_d0i0_sec.tar.xz
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
     - name: check build configuration
       shell: cmd
       run: |
@@ -7107,7 +7107,7 @@ jobs:
         mv MPC /c/
     - uses: ammaraskar/msvc-problem-matcher@0.1
     - name: set up msvc env
-      uses: ilammy/msvc-dev-cmd@v1.8.0
+      uses: ilammy/msvc-dev-cmd@v1.9.0
       with:
         arch: x86
     - name: configure OpenDDS
