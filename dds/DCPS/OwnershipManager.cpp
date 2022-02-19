@@ -129,15 +129,15 @@ OwnershipManager::remove_writer(const PublicationId& pub_id)
 }
 
 void
-OwnershipManager::remove_instance(InstanceState* instance_state)
+OwnershipManager::remove_instance(SubscriptionInstance_rch instance)
 {
   ACE_GUARD(ACE_Thread_Mutex, guard, instance_lock_);
-  const DDS::InstanceHandle_t ih = instance_state->instance_handle();
+  const DDS::InstanceHandle_t ih = instance->instance_handle();
   InstanceOwnershipWriterInfos::iterator i = instance_ownership_infos_.find(ih);
   if (i != instance_ownership_infos_.end()) {
     InstanceStateVec& states = i->second.instance_states_;
     for (size_t j = 0; j < states.size(); ++j) {
-      if (states[j].in() == instance_state) {
+      if (states[j] == instance) {
         states.erase(states.begin() + j);
         break;
       }
@@ -281,26 +281,25 @@ OwnershipManager::remove_candidate(OwnershipWriterInfos& infos,
 }
 
 bool
-OwnershipManager::select_owner(const DDS::InstanceHandle_t& instance_handle,
+OwnershipManager::select_owner(SubscriptionInstance_rch instance,
                                const PublicationId& pub_id,
-                               const CORBA::Long& ownership_strength,
-                               InstanceState_rch instance_state)
+                               const CORBA::Long& ownership_strength)
 {
   ACE_GUARD_RETURN(ACE_Thread_Mutex, guard, instance_lock_, false);
 
   InstanceOwnershipWriterInfos::iterator iter =
-    instance_ownership_infos_.find(instance_handle);
+    instance_ownership_infos_.find(instance->instance_handle());
   if (iter != instance_ownership_infos_.end()) {
     OwnershipWriterInfos& infos = iter->second;
-    if (!instance_state->registered()) {
-      infos.instance_states_.push_back(instance_state);
-      instance_state->registered(true);
+    if (!instance->registered()) {
+      infos.instance_states_.push_back(instance);
+      instance->registered(true);
     }
 
     // No owner at some point.
     if (infos.owner_.pub_id_ == GUID_UNKNOWN) {
       infos.owner_ = WriterInfo(pub_id, ownership_strength);
-      broadcast_new_owner(instance_handle, infos, pub_id);
+      broadcast_new_owner(instance->instance_handle(), infos, pub_id);
       return true;
 
     } else if (infos.owner_.pub_id_ == pub_id) { // is current owner
@@ -311,7 +310,7 @@ OwnershipManager::select_owner(const DDS::InstanceHandle_t& instance_handle,
 
       } else { //update strength and reevaluate owner which broadcast new owner.
         infos.candidates_.push_back(WriterInfo(pub_id, ownership_strength));
-        remove_owner(instance_handle, infos, true);
+        remove_owner(instance->instance_handle(), infos, true);
         return infos.owner_.pub_id_ == pub_id;
       }
 
@@ -359,7 +358,7 @@ OwnershipManager::select_owner(const DDS::InstanceHandle_t& instance_handle,
         // Owner was already moved to candidate list and the list was sorted
         // already so pick owner from sorted list and replace current
         // owner.
-        remove_owner(instance_handle, infos, false);
+        remove_owner(instance->instance_handle(), infos, false);
       }
 
       return infos.owner_.pub_id_ == pub_id;
@@ -367,13 +366,13 @@ OwnershipManager::select_owner(const DDS::InstanceHandle_t& instance_handle,
 
   } else {
     // first writer of the instance so it's owner.
-    OwnershipWriterInfos& infos = instance_ownership_infos_[instance_handle];
+    OwnershipWriterInfos& infos = instance_ownership_infos_[instance->instance_handle()];
     infos.owner_ = WriterInfo(pub_id, ownership_strength);
-    if (!instance_state->registered()) {
-      infos.instance_states_.push_back(instance_state);
-      instance_state->registered(true);
+    if (!instance->registered()) {
+      infos.instance_states_.push_back(instance);
+      instance->registered(true);
     }
-    broadcast_new_owner(instance_handle, infos, infos.owner_.pub_id_);
+    broadcast_new_owner(instance->instance_handle(), infos, infos.owner_.pub_id_);
     return true;
   }
 

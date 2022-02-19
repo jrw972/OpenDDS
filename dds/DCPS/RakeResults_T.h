@@ -24,6 +24,8 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class SubscriptionInstance;
+
 enum Operation_t { DDS_OPERATION_READ, DDS_OPERATION_TAKE };
 
 /// Rake is an abbreviation for "read or take".  This class manages the
@@ -40,12 +42,13 @@ public:
 #ifndef OPENDDS_NO_QUERY_CONDITION
               DDS::QueryCondition_ptr cond,
 #endif
-              Operation_t oper);
+              Operation_t oper,
+              InstanceStateUpdateList& isul);
 
   /// Returns false if the sample will definitely not be part of the
   /// resulting dataset, however if this returns true it still may be
   /// excluded (due to sorting and max_samples).
-  bool insert_sample(ReceivedDataElement* sample, SubscriptionInstance_rch i,
+  bool insert_sample(ReceivedDataElement* sample, RcHandle<SubscriptionInstance> i,
                      size_t index_in_instance);
 
   bool copy_to_user();
@@ -66,6 +69,7 @@ private:
   DDS::QueryCondition_ptr cond_;
 #endif
   Operation_t oper_;
+  InstanceStateUpdateList& isul_;
 
   class SortedSetCmp {
   public:
@@ -95,19 +99,6 @@ private:
 
   // Contains data for all other use cases
   OPENDDS_VECTOR(RakeData) unsorted_;
-
-  // data structures used by copy_into()
-  typedef OPENDDS_VECTOR(CORBA::ULong) IndexList;
-  struct InstanceData {
-    bool most_recent_generation_;
-    size_t MRSIC_index_;
-    IndexList sampleinfo_positions_;
-    CORBA::Long MRSIC_disposed_gc_, MRSIC_nowriters_gc_,
-    MRS_disposed_gc_, MRS_nowriters_gc_;
-    InstanceData() : most_recent_generation_(false), MRSIC_index_(0),
-      MRSIC_disposed_gc_(0), MRSIC_nowriters_gc_(0), MRS_disposed_gc_(0),
-      MRS_nowriters_gc_(0) {}
-  };
 };
 
 } // namespace DCPS

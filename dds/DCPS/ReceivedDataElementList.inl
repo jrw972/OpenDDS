@@ -32,10 +32,6 @@ OpenDDS::DCPS::ReceivedDataElementList::add(ReceivedDataElement *data_sample)
     data_sample->previous_data_sample_ = tail_;
     tail_ = data_sample;
   }
-
-  if (instance_state_) {
-    instance_state_->empty(false);
-  }
 }
 
 ACE_INLINE

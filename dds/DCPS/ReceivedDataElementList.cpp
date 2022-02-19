@@ -52,8 +52,8 @@ void OpenDDS::DCPS::ReceivedDataElement::operator delete(void* memory, ACE_New_A
   operator delete(memory);
 }
 
-OpenDDS::DCPS::ReceivedDataElementList::ReceivedDataElementList(InstanceState_rch instance_state)
-  : head_(0), tail_(0), size_(0), instance_state_(instance_state)
+OpenDDS::DCPS::ReceivedDataElementList::ReceivedDataElementList()
+  : head_(0), tail_(0), size_(0)
 {
 }
 
@@ -76,16 +76,14 @@ OpenDDS::DCPS::ReceivedDataElementList::apply_all(
   }
 }
 
-bool
+void
 OpenDDS::DCPS::ReceivedDataElementList::remove(
   ReceivedDataFilter& match,
   bool eval_all)
 {
   if (!head_) {
-    return false;
+    return;
   }
-
-  bool released = false;
 
   for (ReceivedDataElement* item = head_ ; item != 0 ;
        item = item->next_data_sample_) {
@@ -118,21 +116,14 @@ OpenDDS::DCPS::ReceivedDataElementList::remove(
           item->previous_data_sample_ ;
       }
 
-      if (instance_state_ && size_ == 0) {
-        // let the instance know it is empty
-        released = released || instance_state_->empty(true);
-      }
-
       if (!eval_all) break;
     }
   }
-
-  return released;
 }
 
-bool
+void
 OpenDDS::DCPS::ReceivedDataElementList::remove(ReceivedDataElement *data_sample)
 {
   IdentityFilter match(data_sample);
-  return remove(match, false); // short-circuit evaluation
+  remove(match, false); // short-circuit evaluation
 }

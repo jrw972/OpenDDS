@@ -19,15 +19,15 @@ OpenDDS::DCPS::InstanceState::data_reader() const
 
 ACE_INLINE
 void
-OpenDDS::DCPS::InstanceState::accessed()
+OpenDDS::DCPS::InstanceState::accessed(InstanceStateUpdateList& isul)
 {
-  ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, lock_);
   //
   // Manage the view state due to data access here.
   //
   if (view_state_ & DDS::ANY_VIEW_STATE) {
+    const CORBA::ULong previous_state = combined_state_i();
     view_state_ = DDS::NOT_NEW_VIEW_STATE;
-    state_updated();
+    isul.add(handle_, previous_state, combined_state_i());
   }
 }
 
@@ -65,9 +65,9 @@ size_t OpenDDS::DCPS::InstanceState::no_writers_generation_count() const
 
 ACE_INLINE
 void
-OpenDDS::DCPS::InstanceState::data_was_received(const PublicationId& writer_id)
+OpenDDS::DCPS::InstanceState::data_was_received(const PublicationId& writer_id,
+                                                InstanceStateUpdateList& isul)
 {
-  ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, lock_);
   cancel_release();
 
   //
@@ -83,14 +83,18 @@ OpenDDS::DCPS::InstanceState::data_was_received(const PublicationId& writer_id)
 
   case DDS::NOT_NEW_VIEW_STATE:
     if (instance_state_ & DDS::NOT_ALIVE_INSTANCE_STATE) {
+      const CORBA::ULong previous_state = combined_state_i();
       view_state_ = DDS::NEW_VIEW_STATE;
-      state_updated();
+      isul.add(handle_, previous_state, combined_state_i());
     }
     break;
 
   default:
-    view_state_ = DDS::NEW_VIEW_STATE;
-    state_updated();
+    {
+      const CORBA::ULong previous_state = combined_state_i();
+      view_state_ = DDS::NEW_VIEW_STATE;
+      isul.add(handle_, previous_state, combined_state_i());
+    }
     break;
   }
 
@@ -107,16 +111,16 @@ OpenDDS::DCPS::InstanceState::data_was_received(const PublicationId& writer_id)
     break;
   }
 
+  const CORBA::ULong previous_state = combined_state_i();
   instance_state_ = DDS::ALIVE_INSTANCE_STATE;
-  state_updated();
+  isul.add(handle_, previous_state, combined_state_i());
 }
 
 ACE_INLINE
 void
-OpenDDS::DCPS::InstanceState::lively(const PublicationId& writer_id)
+OpenDDS::DCPS::InstanceState::lively(const PublicationId& writer_id,
+                                     InstanceStateUpdateList& isul)
 {
-  ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, lock_);
-
   //
   // Manage transisitions in the instance state that do not require a
   // data sample, but merely the notion of liveliness.
@@ -127,33 +131,16 @@ OpenDDS::DCPS::InstanceState::lively(const PublicationId& writer_id)
     cancel_release(); // cancel unregister
 
     ++no_writers_generation_count_;
+    const CORBA::ULong previous_state = combined_state_i();
     instance_state_ = DDS::ALIVE_INSTANCE_STATE;
-    state_updated();
+    isul.add(handle_, previous_state, combined_state_i());
   }
 }
-
-ACE_INLINE
-bool
-OpenDDS::DCPS::InstanceState::empty(bool value)
-{
-  //
-  // Manage the instance state due to the DataReader becoming empty
-  // here.
-  //
-  if ((empty_ = value) && release_pending_) {
-    return release_if_empty();
-  } else {
-    return false;
-  }
-}
-
 
 ACE_INLINE
 bool
 OpenDDS::DCPS::InstanceState::is_last (const PublicationId& pub)
 {
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, guard, lock_, false);
-
   return writers_.size() == 1 && *writers_.begin() == pub;
 }
 
@@ -161,8 +148,6 @@ ACE_INLINE
 bool
 OpenDDS::DCPS::InstanceState::no_writer () const
 {
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, guard, lock_, true);
-
   return writers_.empty();
 }
 

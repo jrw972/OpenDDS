@@ -27,6 +27,8 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class SubscriptionInstance;
+
 /// Rake is an abbreviation for "read or take".  This class manages the
 /// results from a read() or take() operation, which are the received_data
 /// and the info_seq sequences passed in by-reference from the user.
@@ -37,7 +39,7 @@ public:
   /// Returns false if the sample will definitely not be part of the
   /// resulting dataset, however if this returns true it still may be
   /// excluded (due to sorting and max_samples).
-  bool insert_sample(ReceivedDataElement* sample, SubscriptionInstance_rch i,
+  bool insert_sample(ReceivedDataElement* sample, RcHandle<SubscriptionInstance> i,
                      size_t index_in_instance);
 
   void get_datareaders (DDS::DataReaderSeq & readers);

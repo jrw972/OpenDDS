@@ -759,15 +759,16 @@ DataReaderImpl::signal_liveliness(const RepoId& remote_participant)
   }
 
   if (!writers.empty()) {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_);
+    IndexInstanceState iis(*this);
     for (WriterSet::iterator pos = writers.begin(), limit = writers.end();
          pos != limit;
          ++pos) {
+      // FUTURE: This loop is not scalable.
       for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
            iter != instances_.end();
            ++iter) {
         SubscriptionInstance_rch ptr = iter->second;
-        ptr->instance_state_->lively(pos->first);
+        ptr->lively(pos->first, iis.isul);
       }
     }
   }
@@ -1459,12 +1460,12 @@ DataReaderImpl::data_received(const ReceivedDataSample& sample)
       GuidConverter writer_converter(header.publication_id_);
 
       ACE_DEBUG((LM_DEBUG,
-          ACE_TEXT("(%P|%t) DataReaderImpl::data_received: reader %C writer %C ")
-          ACE_TEXT("instance %d is_new_instance %d filtered %d\n"),
-          OPENDDS_STRING(reader_converter).c_str(),
-          OPENDDS_STRING(writer_converter).c_str(),
-          instance ? instance->instance_handle_ : 0,
-          is_new_instance, filtered));
+                 ACE_TEXT("(%P|%t) DataReaderImpl::data_received: reader %C writer %C ")
+                 ACE_TEXT("instance %d is_new_instance %d filtered %d\n"),
+                 OPENDDS_STRING(reader_converter).c_str(),
+                 OPENDDS_STRING(writer_converter).c_str(),
+                 instance ? instance->instance_handle () : 0,
+                 is_new_instance, filtered));
     }
 
     if (filtered) break; // sample filtered from instance
@@ -1542,17 +1543,15 @@ DataReaderImpl::data_received(const ReceivedDataSample& sample)
     this->writer_activity(sample.header_);
 
     // tell all instances they got a liveliness message
-    {
-      ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, instances_lock_);
-      for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
-          iter != instances_.end();
-          ++iter) {
-        if (iter->second->instance_state_->writes_instance(sample.header_.publication_id_)) {
-          iter->second->instance_state_->lively(sample.header_.publication_id_);
-        }
+    // FUTURE: This loop is not scalable.
+    IndexInstanceState iis(*this);
+    for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
+         iter != instances_.end();
+         ++iter) {
+      if (iter->second->writes_instance(sample.header_.publication_id_)) {
+        iter->second->lively(sample.header_.publication_id_, iis.isul);
       }
     }
-
   }
   break;
 
@@ -1573,7 +1572,7 @@ DataReaderImpl::data_received(const ReceivedDataSample& sample)
       if (! this->is_exclusive_ownership_
           || (owner_manager
               && (instance)
-              && (owner_manager->is_owner(instance->instance_handle_,
+              && (owner_manager->is_owner(instance->instance_handle(),
                   sample.header_.publication_id_)))) {
 #endif
         this->watchdog_->cancel_timer(instance);
@@ -1602,7 +1601,7 @@ DataReaderImpl::data_received(const ReceivedDataSample& sample)
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
         if (! this->is_exclusive_ownership_
             || (this->is_exclusive_ownership_
-                && instance->instance_state_->is_last(sample.header_.publication_id_))) {
+                && instance->is_last(sample.header_.publication_id_))) {
 #endif
           this->watchdog_->cancel_timer(instance);
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
@@ -1632,11 +1631,11 @@ DataReaderImpl::data_received(const ReceivedDataSample& sample)
       if (! this->is_exclusive_ownership_
           || (owner_manager
               && (instance)
-              && (owner_manager->is_owner (instance->instance_handle_,
+              && (owner_manager->is_owner (instance->instance_handle(),
                   sample.header_.publication_id_)))
           || (is_exclusive_ownership_
               && (instance)
-              && instance->instance_state_->is_last(sample.header_.publication_id_))) {
+              && instance->is_last(sample.header_.publication_id_))) {
 #endif
         if (instance) {
           this->watchdog_->cancel_timer(instance);
@@ -1694,7 +1693,7 @@ DataReaderImpl::data_received(const ReceivedDataSample& sample)
       sample.header_.source_timestamp_sec_,
       sample.header_.source_timestamp_nanosec_
     };
-    Observer::Sample s(instance ? instance->instance_handle_ : DDS::HANDLE_NIL, sample.header_.instance_state(), timestamp, sample.header_.sequence_, real_data->get(), *vwd);
+    Observer::Sample s(instance ? instance->instance_handle() : DDS::HANDLE_NIL, sample.header_.instance_state(), timestamp, sample.header_.sequence_, real_data->get(), *vwd);
     observer->on_sample_received(this, s);
   }
 }
@@ -1739,26 +1738,26 @@ DataReaderImpl::get_subscriber_servant()
   return subscriber_servant_.lock();
 }
 
-bool DataReaderImpl::have_sample_states(
-    DDS::SampleStateMask sample_states) const
+bool DataReaderImpl::have_sample_states(DDS::SampleStateMask sample_states) const
 {
   //!!!caller should have acquired sample_lock_
-  /// @TODO: determine correct failed lock return value.
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_, false);
 
-  for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
-      iter != instances_.end();
-      ++iter) {
-    SubscriptionInstance_rch ptr = iter->second;
+  const CORBA::ULong combined_state =
+    InstanceState::combine_state(sample_states,
+                                 DDS::NEW_VIEW_STATE | DDS::NOT_NEW_VIEW_STATE,
+                                 DDS::ALIVE_INSTANCE_STATE | DDS::NOT_ALIVE_NO_WRITERS_INSTANCE_STATE | DDS::NOT_ALIVE_DISPOSED_INSTANCE_STATE);
 
-    for (ReceivedDataElement *item = ptr->rcvd_samples_.head_;
-        item != 0; item = item->next_data_sample_) {
-      if (item->sample_state_ & sample_states
-#ifndef OPENDDS_NO_OBJECT_MODEL_PROFILE
-          && !item->coherent_change_
-#endif
-                 ) {
-        return true;
+  for (LookupMap::const_iterator pos = combined_state_lookup_.begin(), limit = combined_state_lookup_.end();
+       pos != limit; ++pos) {
+    if (pos->first & combined_state) {
+      const HandleSet& matches = pos->second;
+      for (HandleSet::iterator it = matches.begin(); it != matches.end(); ++it) {
+        const DDS::InstanceHandle_t handle = *it;
+        const SubscriptionInstance_rch inst = get_handle_instance(handle);
+
+        if (inst->no_coherent_change()) {
+          return true;
+        }
       }
     }
   }
@@ -1770,16 +1769,19 @@ bool
 DataReaderImpl::have_view_states(DDS::ViewStateMask view_states) const
 {
   //!!!caller should have acquired sample_lock_
-  /// @TODO: determine correct failed lock return value.
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_,false);
 
-  for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
-      iter != instances_.end();
-      ++iter) {
-    SubscriptionInstance_rch ptr = iter->second;
+  const CORBA::ULong combined_state =
+    InstanceState::combine_state(DDS::READ_SAMPLE_STATE | DDS::NOT_READ_SAMPLE_STATE,
+                                 view_states,
+                                 DDS::ALIVE_INSTANCE_STATE | DDS::NOT_ALIVE_NO_WRITERS_INSTANCE_STATE | DDS::NOT_ALIVE_DISPOSED_INSTANCE_STATE);
 
-    if (ptr->instance_state_->view_state() & view_states) {
-      return true;
+  for (LookupMap::const_iterator pos = combined_state_lookup_.begin(), limit = combined_state_lookup_.end();
+       pos != limit; ++pos) {
+    if (pos->first & combined_state) {
+      const HandleSet& matches = pos->second;
+      if (!matches.empty()) {
+        return true;
+      }
     }
   }
 
@@ -1790,16 +1792,19 @@ bool DataReaderImpl::have_instance_states(
     DDS::InstanceStateMask instance_states) const
 {
   //!!!caller should have acquired sample_lock_
-  /// @TODO: determine correct failed lock return value.
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_,false);
 
-  for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
-      iter != instances_.end();
-      ++iter) {
-    SubscriptionInstance_rch ptr = iter->second;
+  const CORBA::ULong combined_state =
+    InstanceState::combine_state(DDS::READ_SAMPLE_STATE | DDS::NOT_READ_SAMPLE_STATE,
+                                 DDS::NEW_VIEW_STATE | DDS::NOT_NEW_VIEW_STATE,
+                                 instance_states);
 
-    if (ptr->instance_state_->instance_state() & instance_states) {
-      return true;
+  for (LookupMap::const_iterator pos = combined_state_lookup_.begin(), limit = combined_state_lookup_.end();
+       pos != limit; ++pos) {
+    if (pos->first & combined_state) {
+      const HandleSet& matches = pos->second;
+      if (!matches.empty()) {
+        return true;
+      }
     }
   }
 
@@ -1812,18 +1817,21 @@ bool DataReaderImpl::contains_sample(DDS::SampleStateMask sample_states,
     DDS::ViewStateMask view_states, DDS::InstanceStateMask instance_states)
 {
   ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, guard, sample_lock_, false);
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, instances_lock_,false);
 
-  for (SubscriptionInstanceMapType::iterator iter = instances_.begin(), end = instances_.end(); iter != end; ++iter) {
-    SubscriptionInstance& inst = *iter->second;
+  const CORBA::ULong combined_state =
+    InstanceState::combine_state(sample_states,
+                                 view_states,
+                                 instance_states);
 
-    if (inst.instance_state_->match(view_states, instance_states)) {
-      for (ReceivedDataElement* item = inst.rcvd_samples_.head_; item != 0; item = item->next_data_sample_) {
-        if (item->sample_state_ & sample_states
-#ifndef OPENDDS_NO_OBJECT_MODEL_PROFILE
-            && !item->coherent_change_
-#endif
-        ) {
+  for (LookupMap::const_iterator pos = combined_state_lookup_.begin(), limit = combined_state_lookup_.end();
+       pos != limit; ++pos) {
+    if (pos->first & combined_state) {
+      const HandleSet& matches = pos->second;
+      for (HandleSet::iterator it = matches.begin(); it != matches.end(); ++it) {
+        const DDS::InstanceHandle_t handle = *it;
+        const SubscriptionInstance_rch inst = get_handle_instance(handle);
+
+        if (inst->no_coherent_change()) {
           return true;
         }
       }
@@ -1850,50 +1858,19 @@ DataReaderImpl::listener_for(DDS::StatusKind kind)
   }
 }
 
-void DataReaderImpl::sample_info(DDS::SampleInfo & sample_info,
-    const ReceivedDataElement *ptr)
-{
-
-  sample_info.sample_rank = 0;
-
-  // generation_rank =
-  //    (MRSIC.disposed_generation_count +
-  //     MRSIC.no_writers_generation_count)
-  //  - (S.disposed_generation_count +
-  //     S.no_writers_generation_count)
-  //
-  sample_info.generation_rank =
-      (sample_info.disposed_generation_count +
-          sample_info.no_writers_generation_count) -
-          sample_info.generation_rank;
-
-  // absolute_generation_rank =
-  //     (MRS.disposed_generation_count +
-  //      MRS.no_writers_generation_count)
-  //   - (S.disposed_generation_count +
-  //      S.no_writers_generation_count)
-  //
-  sample_info.absolute_generation_rank =
-      (static_cast<CORBA::Long>(ptr->disposed_generation_count_) +
-          static_cast<CORBA::Long>(ptr->no_writers_generation_count_)) -
-          sample_info.absolute_generation_rank;
-
-  sample_info.opendds_reserved_publication_seq = ptr->sequence_.getValue();
-}
-
 CORBA::Long DataReaderImpl::total_samples() const
 {
   //!!!caller should have acquired sample_lock_
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_,0);
 
   CORBA::Long count(0);
 
+  // FUTURE: This loop is not scalable.
   for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
       iter != instances_.end();
       ++iter) {
     SubscriptionInstance_rch ptr = iter->second;
 
-    count += static_cast<CORBA::Long>(ptr->rcvd_samples_.size_);
+    count += static_cast<CORBA::Long>(ptr->sample_count());
   }
 
   return count;
@@ -2026,6 +2003,36 @@ DataReaderImpl::LivelinessTimer::check_liveliness_i(bool cancel,
   }
 }
 
+DataReaderImpl::IndexInstanceState::~IndexInstanceState()
+{
+  for (InstanceStateUpdateList::const_add_iterator pos = isul.add_begin(), limit = isul.add_end(); pos != limit; ++pos) {
+    reader_.combined_state_lookup_[pos->previous_state].erase(pos->handle);
+    reader_.combined_state_lookup_[pos->current_state].insert(pos->handle);
+  }
+
+  for (InstanceStateUpdateList::const_remove_iterator pos = isul.remove_begin(), limit = isul.remove_end(); pos != limit; ++pos) {
+    SubscriptionInstance_rch instance = reader_.get_handle_instance(*pos);
+
+    if (!instance) {
+      ACE_ERROR((LM_ERROR,
+                 "(%P|%t) ERROR: DataReaderImpl::IndexInstanceState::~IndexInstanceState: "
+                 "could not find the instance by handle %d\n", *pos));
+      return;
+    }
+
+    reader_.purge_data(instance);
+
+    reader_.instances_.erase(*pos);
+    const CORBA::ULong state = instance->combined_state();
+    reader_.combined_state_lookup_[state].erase(*pos);
+
+    reader_.release_instance_i(*pos);
+    if (reader_.monitor_) {
+      reader_.monitor_->report();
+    }
+  }
+}
+
 void
 DataReaderImpl::release_instance(DDS::InstanceHandle_t handle)
 {
@@ -2037,31 +2044,9 @@ DataReaderImpl::release_instance(DDS::InstanceHandle_t handle)
 #endif
 
   ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, this->sample_lock_);
-  SubscriptionInstance_rch instance = this->get_handle_instance(handle);
 
-  if (!instance) {
-    ACE_ERROR((LM_ERROR, "(%P|%t) DataReaderImpl::release_instance "
-        "could not find the instance by handle 0x%x\n", handle));
-    return;
-  }
-
-  this->purge_data(instance);
-
-  {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, instances_lock_);
-    instances_.erase(handle);
-  }
-
-  this->release_instance_i(handle);
-  if (this->monitor_) {
-    this->monitor_->report();
-  }
-}
-
-void
-DataReaderImpl::state_updated(DDS::InstanceHandle_t handle)
-{
-  state_updated_i(handle);
+  IndexInstanceState iis(*this);
+  iis.isul.remove(handle);
 }
 
 OpenDDS::DCPS::WriterStats::WriterStats(
@@ -2148,8 +2133,8 @@ DataReaderImpl::writer_removed(WriterInfo& info)
     }
 
     liveliness_changed_status_.last_publication_handle = info.handle();
+    instances_liveliness_update(info_writer_id);
   }
-  instances_liveliness_update(info_writer_id);
 
   if (liveliness_changed) {
     set_status_changed_flag(DDS::LIVELINESS_CHANGED_STATUS, true);
@@ -2161,6 +2146,8 @@ void
 DataReaderImpl::writer_became_alive(WriterInfo& info,
     const MonotonicTimePoint& /* when */)
 {
+  ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
+
   const PublicationId info_writer_id = info.writer_id();
 
   if (DCPS_debug_level >= 5) {
@@ -2238,6 +2225,8 @@ DataReaderImpl::writer_became_alive(WriterInfo& info,
 void
 DataReaderImpl::writer_became_dead(WriterInfo& info)
 {
+  ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
+
   const PublicationId info_writer_id = info.writer_id();
 
   if (DCPS_debug_level >= 5) {
@@ -2315,25 +2304,18 @@ DataReaderImpl::writer_became_dead(WriterInfo& info)
 void
 DataReaderImpl::instances_liveliness_update(const PublicationId& writer)
 {
-  InstanceSet localinsts;
-  {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, instances_lock_);
-    if (instances_.size() == 0) {
-      return;
-    }
-    for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
-         iter != instances_.end(); ++iter) {
-      if (iter->second->instance_state_->writes_instance(writer)) {
-        localinsts.insert(iter->first);
-      }
-    }
+  if (instances_.size() == 0) {
+    return;
   }
 
-  for (InstanceSet::iterator iter = localinsts.begin(); iter != localinsts.end(); ++iter) {
-    set_instance_state(*iter, DDS::NOT_ALIVE_NO_WRITERS_INSTANCE_STATE, SystemTimePoint::now(), writer);
+  // FUTURE: This loop is not scalable.
+  for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
+       iter != instances_.end(); ++iter) {
+    if (iter->second->writes_instance(writer)) {
+      set_instance_state_i(iter->first, DDS::NOT_ALIVE_NO_WRITERS_INSTANCE_STATE, SystemTimePoint::now(), writer);
+    }
   }
 }
-
 
 void
 DataReaderImpl::set_sample_lost_status(
@@ -2501,10 +2483,8 @@ DataReaderImpl::prepare_to_delete()
 }
 
 SubscriptionInstance_rch
-DataReaderImpl::get_handle_instance(DDS::InstanceHandle_t handle)
+DataReaderImpl::get_handle_instance(DDS::InstanceHandle_t handle) const
 {
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_, SubscriptionInstance_rch());
-
   SubscriptionInstanceMapType::iterator iter = instances_.find(handle);
   if (iter == instances_.end()) {
     ACE_DEBUG((LM_WARNING,
@@ -2734,22 +2714,21 @@ DataReaderImpl::ownership_filter_instance(const SubscriptionInstance_rch& instan
 
     // Evaulate the owner of the instance if not selected and filter
     // current message if it's not from owner writer.
-    if ( instance->instance_state_->get_owner() == GUID_UNKNOWN
-        || ! iter->second->is_owner_evaluated(instance->instance_handle_)) {
+    if (instance->get_owner() == GUID_UNKNOWN
+        || ! iter->second->is_owner_evaluated(instance->instance_handle())) {
       OwnershipManagerPtr owner_manager = this->ownership_manager();
 
       bool is_owner = owner_manager && owner_manager->select_owner (
-        instance->instance_handle_,
+        instance,
         iter->second->writer_id(),
-        iter->second->writer_qos_ownership_strength(),
-        instance->instance_state_);
-      iter->second->set_owner_evaluated(instance->instance_handle_, true);
+        iter->second->writer_qos_ownership_strength());
+      iter->second->set_owner_evaluated(instance->instance_handle(), true);
 
       if (! is_owner) {
         if (DCPS_debug_level >= 1) {
           GuidConverter reader_converter(get_repo_id());
           GuidConverter writer_converter(pubid);
-          GuidConverter owner_converter(instance->instance_state_->get_owner());
+          GuidConverter owner_converter(instance->get_owner());
           ACE_DEBUG((LM_DEBUG,
                      ACE_TEXT("(%P|%t) DataReaderImpl::ownership_filter_instance: ")
                      ACE_TEXT("reader %C writer %C is not elected as owner %C\n"),
@@ -2760,11 +2739,11 @@ DataReaderImpl::ownership_filter_instance(const SubscriptionInstance_rch& instan
         return true;
       }
     }
-    else if (! (instance->instance_state_->get_owner() == pubid)) {
+    else if (! (instance->get_owner() == pubid)) {
       if (DCPS_debug_level >= 1) {
         GuidConverter reader_converter(get_repo_id());
         GuidConverter writer_converter(pubid);
-        GuidConverter owner_converter(instance->instance_state_->get_owner());
+        GuidConverter owner_converter(instance->get_owner());
         ACE_DEBUG((LM_DEBUG,
                    ACE_TEXT("(%P|%t) DataReaderImpl::ownership_filter_instance: ")
                    ACE_TEXT("reader %C writer %C is not owner %C\n"),
@@ -2793,13 +2772,13 @@ DataReaderImpl::time_based_filter_instance(
   // TIME_BASED_FILTER processing; expire data samples
   // if minimum separation is not met for instance.
   if (!minimum_separation.is_zero()) {
-    filter_time_expired = now - instance->last_accepted_;
+    filter_time_expired = now - instance->last_accepted();
     if (filter_time_expired < minimum_separation) {
       return true; // Data filtered.
     }
   }
 
-  instance->last_accepted_ = now;
+  instance->last_accepted(now);
 
   return false;
 }
@@ -2816,18 +2795,14 @@ DataReaderImpl::has_zero_copies()
       guard,
       this->sample_lock_,
       true /* assume we have loans */);
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_, true);
 
+  // FUTURE: This loop is not scalable.
   for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
       iter != instances_.end();
       ++iter) {
     SubscriptionInstance_rch ptr = iter->second;
-
-    for (OpenDDS::DCPS::ReceivedDataElement *item = ptr->rcvd_samples_.head_;
-        item != 0; item = item->next_data_sample_) {
-      if (item->zero_copy_cnt_ > 0) {
-        return true;
-      }
+    if (ptr->has_zero_copies()) {
+      return true;
     }
   }
 
@@ -2892,12 +2867,14 @@ void DataReaderImpl::post_read_or_take()
 void DataReaderImpl::reschedule_deadline()
 {
   if (this->watchdog_.in()) {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_);
+    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, this->sample_lock_);
+
+    // FUTURE: This loop is not scalable.
     for (SubscriptionInstanceMapType::iterator iter = this->instances_.begin();
         iter != this->instances_.end();
         ++iter) {
-      if (iter->second->deadline_timer_id_ != -1) {
-        if (this->watchdog_->reset_timer_interval(iter->second->deadline_timer_id_) == -1) {
+      if (iter->second->deadline_timer_id() != -1) {
+        if (this->watchdog_->reset_timer_interval(iter->second->deadline_timer_id()) == -1) {
           ACE_ERROR((LM_ERROR, ACE_TEXT("(%P|%t) ERROR: DataReaderImpl::reschedule_deadline %p\n"),
               ACE_TEXT("reset_timer_interval")));
         }
@@ -2928,8 +2905,8 @@ void
 DataReaderImpl::get_instance_handles(InstanceHandleVec& instance_handles)
 {
   ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
-  ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_);
 
+  // FUTURE: This loop is not scalable.
   for (SubscriptionInstanceMapType::iterator iter = instances_.begin(),
       end = instances_.end(); iter != end; ++iter) {
     instance_handles.push_back(iter->first);
@@ -3033,21 +3010,14 @@ void DataReaderImpl::accept_coherent(const PublicationId& writer_id,
         OPENDDS_STRING(writer).c_str(),
         OPENDDS_STRING(publisher).c_str()));
   }
-  SubscriptionInstanceSet localsubs;
-  {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_);
-    for (SubscriptionInstanceMapType::iterator iter = this->instances_.begin();
-         iter != this->instances_.end(); ++iter) {
-      localsubs.insert(iter->second);
-    }
-  }
+
   ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
-  for (SubscriptionInstanceSet::iterator iter = localsubs.begin();
-       iter != localsubs.end(); iter++) {
-    (*iter)->rcvd_strategy_->accept_coherent(writer_id, publisher_id);
+  // FUTURE: This loop is not scalable.
+  for (SubscriptionInstanceMapType::iterator iter = this->instances_.begin();
+       iter != this->instances_.end(); ++iter) {
+    iter->second->accept_coherent(writer_id, publisher_id);
   }
 }
-
 
 void DataReaderImpl::reject_coherent(const PublicationId& writer_id,
     const RepoId& publisher_id)
@@ -3064,18 +3034,11 @@ void DataReaderImpl::reject_coherent(const PublicationId& writer_id,
         OPENDDS_STRING(publisher).c_str()));
   }
 
-  SubscriptionInstanceSet localsubs;
-  {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, this->instances_lock_);
-    for (SubscriptionInstanceMapType::iterator iter = this->instances_.begin();
-         iter != this->instances_.end(); ++iter) {
-      localsubs.insert(iter->second);
-    }
-  }
   ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
-  for (SubscriptionInstanceSet::iterator iter = localsubs.begin();
-       iter != localsubs.end(); iter++) {
-    (*iter)->rcvd_strategy_->reject_coherent(writer_id, publisher_id);
+  // FUTURE: This loop is not scalable.
+  for (SubscriptionInstanceMapType::iterator iter = this->instances_.begin();
+       iter != this->instances_.end(); ++iter) {
+    iter->second->reject_coherent(writer_id, publisher_id);
   }
   this->reset_coherent_info(writer_id, publisher_id);
 }
@@ -3200,26 +3163,11 @@ void DataReaderImpl::get_ordered_data(GroupRakeData& data,
     DDS::ViewStateMask view_states,
     DDS::InstanceStateMask instance_states)
 {
-  SubscriptionInstanceSet localsubs;
-  {
-    ACE_GUARD(ACE_Recursive_Thread_Mutex, instance_guard, instances_lock_);
-    for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
-         iter != instances_.end(); ++iter) {
-      localsubs.insert(iter->second);
-    }
-  }
   ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
-
-  for (SubscriptionInstanceSet::iterator iter = localsubs.begin(); iter != localsubs.end(); ++iter) {
-    if ((*iter)->instance_state_->match(view_states, instance_states)) {
-      size_t i(0);
-      for (ReceivedDataElement* item = (*iter)->rcvd_samples_.head_; item != 0; item = item->next_data_sample_) {
-        if ((item->sample_state_ & sample_states) && !item->coherent_change_) {
-          data.insert_sample(item, *iter, ++i);
-          group_coherent_ordered_data_.insert_sample(item, *iter, ++i);
-        }
-      }
-    }
+  // FUTURE: This loop is not scalable.
+  for (SubscriptionInstanceMapType::iterator iter = instances_.begin();
+       iter != instances_.end(); ++iter) {
+    iter->second->get_ordered_data(data, group_coherent_ordered_data_, sample_states, view_states, instance_states);
   }
 }
 
@@ -3489,8 +3437,7 @@ void DataReaderImpl::accept_sample_processing(const SubscriptionInstance_rch& in
 #endif
 
   if (instance && watchdog_.in()) {
-    instance->last_sample_tv_ = instance->cur_sample_tv_;
-    instance->cur_sample_tv_.set_to_now();
+    instance->set_current_sample_time();
 
     // Watchdog can't be called with sample_lock_ due to reactor deadlock
     ACE_GUARD(Reverse_Lock_t, unlock_guard, reverse_sample_lock_);

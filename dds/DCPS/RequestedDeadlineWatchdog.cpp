@@ -39,14 +39,14 @@ void
 OpenDDS::DCPS::RequestedDeadlineWatchdog::schedule_timer(
   OpenDDS::DCPS::SubscriptionInstance_rch instance)
 {
-  if (instance->deadline_timer_id_ == -1) {
-    intptr_t handle = instance->instance_handle_;
-    instance->deadline_timer_id_ = Watchdog::schedule_timer(reinterpret_cast<const void*>(handle), this->interval_);
+  if (instance->deadline_timer_id() == -1) {
+    intptr_t handle = instance->instance_handle();
+    instance->deadline_timer_id(Watchdog::schedule_timer(reinterpret_cast<const void*>(handle), this->interval_));
   }
-  if (instance->deadline_timer_id_ == -1) {
+  if (instance->deadline_timer_id() == -1) {
     ACE_ERROR((LM_ERROR,
                "ERROR Timer for instance %X should be scheduled, but is %d\n",
-               instance.in(), instance->deadline_timer_id_));
+               instance.in(), instance->deadline_timer_id()));
   } else if (DCPS_debug_level > 5) {
     ACE_DEBUG((LM_INFO, "Timer for instance %X scheduled\n", instance.in()));
   }
@@ -56,9 +56,9 @@ void
 OpenDDS::DCPS::RequestedDeadlineWatchdog::cancel_timer(
   OpenDDS::DCPS::SubscriptionInstance_rch instance)
 {
-  if (instance->deadline_timer_id_ != -1) {
-    Watchdog::cancel_timer(instance->deadline_timer_id_);
-    instance->deadline_timer_id_ = -1;
+  if (instance->deadline_timer_id() != -1) {
+    Watchdog::cancel_timer(instance->deadline_timer_id());
+    instance->deadline_timer_id(-1);
     if (DCPS_debug_level > 5) {
       ACE_DEBUG((LM_INFO, "Timer for instance %X cancelled\n", instance.in()));
     }
@@ -86,17 +86,17 @@ OpenDDS::DCPS::RequestedDeadlineWatchdog::handle_timeout(const ACE_Time_Value&, 
 void
 OpenDDS::DCPS::RequestedDeadlineWatchdog::execute(SubscriptionInstance_rch instance, bool timer_called)
 {
-  if (instance->deadline_timer_id_ != -1) {
+  if (instance->deadline_timer_id() != -1) {
     bool missed = false;
 
-    if (instance->cur_sample_tv_.is_zero()) { // not received any sample.
+    if (instance->current_sample_time().is_zero()) { // not received any sample.
       missed = true;
 
     } else if (timer_called) { // handle_timeout is called
-      missed = (MonotonicTimePoint::now() - instance->cur_sample_tv_) >= interval_;
+      missed = (MonotonicTimePoint::now() - instance->current_sample_time()) >= interval_;
 
     } else { // upon receiving sample.
-      missed = (instance->cur_sample_tv_ - instance->last_sample_tv_) > interval_;
+      missed = (instance->current_sample_time() - instance->last_sample_time()) > interval_;
     }
 
     if (missed) {
@@ -112,7 +112,7 @@ OpenDDS::DCPS::RequestedDeadlineWatchdog::execute(SubscriptionInstance_rch insta
         ++this->status_.total_count;
         this->status_.total_count_change =
           this->status_.total_count - this->last_total_count_;
-        this->status_.last_instance_handle = instance->instance_handle_;
+        this->status_.last_instance_handle = instance->instance_handle();
 
         reader->set_status_changed_flag(
           DDS::REQUESTED_DEADLINE_MISSED_STATUS, true);
@@ -122,10 +122,10 @@ OpenDDS::DCPS::RequestedDeadlineWatchdog::execute(SubscriptionInstance_rch insta
             DDS::REQUESTED_DEADLINE_MISSED_STATUS);
 
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
-        if (instance->instance_state_->is_exclusive()) {
+        if (instance->is_exclusive()) {
           DataReaderImpl::OwnershipManagerPtr owner_manager = reader->ownership_manager();
           if (owner_manager)
-            owner_manager->remove_writers (instance->instance_handle_);
+            owner_manager->remove_writers (instance->instance_handle());
         }
 #endif
 

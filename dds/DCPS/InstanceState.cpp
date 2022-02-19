@@ -26,39 +26,28 @@ namespace OpenDDS {
 namespace DCPS {
 
 InstanceState::InstanceState(DataReaderImpl* reader,
-                             ACE_Recursive_Thread_Mutex& lock,
                              DDS::InstanceHandle_t handle)
   : ReactorInterceptor(TheServiceParticipant->reactor(),
-                       TheServiceParticipant->reactor_owner()),
-    lock_(lock),
-    instance_state_(0),
-    view_state_(0),
-    disposed_generation_count_(0),
-    no_writers_generation_count_(0),
-    empty_(true),
-    release_pending_(false),
-    release_timer_id_(-1),
-    reader_(*reader),
-    handle_(handle),
-    owner_(GUID_UNKNOWN),
+                       TheServiceParticipant->reactor_owner())
+  , instance_state_(0)
+  , view_state_(0)
+  , not_read_count_(0)
+  , read_count_(0)
+  , disposed_generation_count_(0)
+  , no_writers_generation_count_(0)
+  , release_pending_(false)
+  , release_timer_id_(-1)
+  , reader_(*reader)
+  , handle_(handle)
+  , owner_(GUID_UNKNOWN)
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
-    exclusive_(reader->qos_.ownership.kind == DDS::EXCLUSIVE_OWNERSHIP_QOS),
+  , exclusive_(reader->qos_.ownership.kind == DDS::EXCLUSIVE_OWNERSHIP_QOS)
 #endif
-    registered_(false)
+  , registered_(false)
 {}
 
 InstanceState::~InstanceState()
-{
-#ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
-  if (registered_) {
-    RcHandle<DataReaderImpl> reader = reader_.lock();
-    if (reader) {
-      DataReaderImpl::OwnershipManagerPtr om = reader->ownership_manager();
-      if (om) om->remove_instance(this);
-    }
-  }
-#endif
-}
+{}
 
 void InstanceState::sample_info(DDS::SampleInfo& si, const ReceivedDataElement* de)
 {
@@ -111,14 +100,18 @@ int InstanceState::handle_timeout(const ACE_Time_Value&, const void*)
                ACE_TEXT(" autopurging samples with instance handle 0x%x!\n"),
                handle_));
   }
-  release();
+
+  RcHandle<DataReaderImpl> reader = reader_.lock();
+  if (reader) {
+    reader->release_instance(handle_);
+  }
 
   return 0;
 }
 
-bool InstanceState::dispose_was_received(const PublicationId& writer_id)
+bool InstanceState::dispose_was_received(const PublicationId& writer_id,
+                                         InstanceStateUpdateList& isul)
 {
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, guard, lock_, false);
   writers_.erase(writer_id);
 
   //
@@ -134,8 +127,9 @@ bool InstanceState::dispose_was_received(const PublicationId& writer_id)
       if (! exclusive_
         || (owner_manager && owner_manager->is_owner (handle_, writer_id))) {
 #endif
+        const CORBA::ULong previous_state = combined_state_i();
         instance_state_ = DDS::NOT_ALIVE_DISPOSED_INSTANCE_STATE;
-        state_updated();
+        isul.add(handle_, previous_state, combined_state_i());
         schedule_release();
         return true;
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
@@ -147,7 +141,8 @@ bool InstanceState::dispose_was_received(const PublicationId& writer_id)
   return false;
 }
 
-bool InstanceState::unregister_was_received(const PublicationId& writer_id)
+bool InstanceState::unregister_was_received(const PublicationId& writer_id,
+                                            InstanceStateUpdateList& isul)
 {
   if (DCPS_debug_level > 1) {
     GuidConverter conv(writer_id);
@@ -156,7 +151,6 @@ bool InstanceState::unregister_was_received(const PublicationId& writer_id)
     ));
   }
 
-  ACE_GUARD_RETURN(ACE_Recursive_Thread_Mutex, guard, lock_, false);
   writers_.erase(writer_id);
 #ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
   if (exclusive_) {
@@ -172,26 +166,14 @@ bool InstanceState::unregister_was_received(const PublicationId& writer_id)
 #endif
 
   if (writers_.empty() && (instance_state_ & DDS::ALIVE_INSTANCE_STATE)) {
+    const CORBA::ULong previous_state = combined_state_i();
     instance_state_ = DDS::NOT_ALIVE_NO_WRITERS_INSTANCE_STATE;
-    state_updated();
+    isul.add(handle_, previous_state, combined_state_i());
     schedule_release();
     return true;
   }
 
   return false;
-}
-
-void InstanceState::schedule_pending()
-{
-  release_pending_ = true;
-}
-
-void OpenDDS::DCPS::InstanceState::state_updated() const
-{
-  RcHandle<DataReaderImpl> reader = reader_.lock();
-  if (reader) {
-    reader->state_updated(handle_);
-  }
 }
 
 void InstanceState::schedule_release()
@@ -234,7 +216,7 @@ void InstanceState::schedule_release()
     // sample being queued to the ReceivedDataElementList; marking
     // the release as pending prevents this sample from being lost
     // if all samples have been already removed from the instance.
-    schedule_pending();
+    release_pending_ = true;
   }
 }
 
@@ -242,26 +224,6 @@ void InstanceState::cancel_release()
 {
   release_pending_ = false;
   execute_or_enqueue(make_rch<CancelCommand>(this));
-}
-
-bool InstanceState::release_if_empty()
-{
-  bool released = false;
-  if (empty_ && writers_.empty()) {
-    release();
-    released = true;
-  } else {
-    schedule_pending();
-  }
-  return released;
-}
-
-void InstanceState::release()
-{
-  RcHandle<DataReaderImpl> reader = reader_.lock();
-  if (reader) {
-    reader->release_instance(handle_);
-  }
 }
 
 void InstanceState::set_owner(const PublicationId& owner)

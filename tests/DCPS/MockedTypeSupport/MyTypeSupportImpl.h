@@ -125,7 +125,7 @@ public:
 
 #endif
 
-  void set_instance_state(DDS::InstanceHandle_t, DDS::InstanceStateKind,
+  void set_instance_state_i(DDS::InstanceHandle_t, DDS::InstanceStateKind,
     const OpenDDS::DCPS::SystemTimePoint&, const OpenDDS::DCPS::GUID_t& = OpenDDS::DCPS::GUID_UNKNOWN)
   {}
 };

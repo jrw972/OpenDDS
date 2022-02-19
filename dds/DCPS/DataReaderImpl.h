@@ -72,7 +72,7 @@ class Monitor;
 class DataReaderImpl;
 class FilterEvaluator;
 
-typedef Cached_Allocator_With_Overflow<ReceivedDataElementMemoryBlock, ACE_Null_Mutex>
+typedef Cached_Allocator_With_Overflow<ReceivedDataElementMemoryBlock, ACE_Thread_Mutex>
 ReceivedDataAllocator;
 
 enum MarshalingType {
@@ -216,11 +216,15 @@ public:
   friend class QueryConditionImpl;
   friend class SubscriberImpl;
 
-  typedef OPENDDS_MAP(DDS::InstanceHandle_t, SubscriptionInstance_rch) SubscriptionInstanceMapType;
+  typedef OPENDDS_MAP(DDS::InstanceHandle_t, RcHandle<SubscriptionInstance>) SubscriptionInstanceMapType;
   typedef OPENDDS_SET(DDS::InstanceHandle_t) InstanceSet;
-  typedef OPENDDS_SET(SubscriptionInstance_rch) SubscriptionInstanceSet;
+  typedef OPENDDS_SET(RcHandle<SubscriptionInstance>) SubscriptionInstanceSet;
   /// Type of collection of statistics for writers to this reader.
   typedef OPENDDS_MAP_CMP(PublicationId, WriterStats, GUID_tKeyLessThan) StatsMapType;
+  typedef OPENDDS_SET(DDS::InstanceHandle_t) HandleSet;
+  // The key is a bit set that combines the sample state (2 bits),
+  // view state (2 bits), instance state (3 bits), , and
+  typedef OPENDDS_MAP(CORBA::ULong, HandleSet) LookupMap;
 
   DataReaderImpl();
 
@@ -393,14 +397,14 @@ public:
 #endif
 
   virtual RcHandle<MessageHolder> dds_demarshal(const ReceivedDataSample& sample,
-                                                SubscriptionInstance_rch& instance,
+                                                RcHandle<SubscriptionInstance>& instance,
                                                 bool& is_new_instance,
                                                 bool& filtered,
                                                 MarshalingType marshaling_type,
                                                 bool full_copy) = 0;
 
   virtual void dispose_unregister(const ReceivedDataSample& sample,
-                                  SubscriptionInstance_rch& instance);
+                                  RcHandle<SubscriptionInstance>& instance);
 
   void process_latency(const ReceivedDataSample& sample);
   void notify_latency(PublicationId writer);
@@ -433,9 +437,6 @@ public:
 
   /// Release the instance with the handle.
   void release_instance(DDS::InstanceHandle_t handle);
-
-  // Take appropriate actions upon learning instance or view state has been updated
-  void state_updated(DDS::InstanceHandle_t handle);
 
   /// Release all instances held by the reader.
   virtual void release_all_instances() = 0;
@@ -483,7 +484,7 @@ public:
 #endif
 
   virtual void lookup_instance(const ReceivedDataSample& sample,
-                               SubscriptionInstance_rch& instance) = 0;
+                               RcHandle<SubscriptionInstance>& instance) = 0;
 
 #ifndef OPENDDS_NO_CONTENT_SUBSCRIPTION_PROFILE
 
@@ -533,10 +534,15 @@ public:
 
 #endif
 
-  virtual void set_instance_state(DDS::InstanceHandle_t instance,
-                                  DDS::InstanceStateKind state,
-                                  const SystemTimePoint& timestamp = SystemTimePoint::now(),
-                                  const GUID_t& = GUID_UNKNOWN) = 0;
+  void set_instance_state(DDS::InstanceHandle_t instance,
+                          DDS::InstanceStateKind state,
+                          const SystemTimePoint& timestamp = SystemTimePoint::now(),
+                          const GUID_t& publication_id = GUID_UNKNOWN)
+  {
+    using namespace OpenDDS::DCPS;
+    ACE_GUARD(ACE_Recursive_Thread_Mutex, guard, sample_lock_);
+    set_instance_state_i(instance, state, timestamp, publication_id);
+  }
 
 #ifndef OPENDDS_NO_OBJECT_MODEL_PROFILE
   void begin_access();
@@ -618,37 +624,28 @@ protected:
 
   virtual const ValueWriterDispatcher* get_value_writer_dispatcher() const { return 0; }
 
-  void sample_info(DDS::SampleInfo & sample_info,
-                   const ReceivedDataElement *ptr);
-
   CORBA::Long total_samples() const;
 
   void set_sample_lost_status(const DDS::SampleLostStatus& status);
   void set_sample_rejected_status(
     const DDS::SampleRejectedStatus& status);
 
-  SubscriptionInstance_rch get_handle_instance(
-    DDS::InstanceHandle_t handle);
+  RcHandle<SubscriptionInstance> get_handle_instance(DDS::InstanceHandle_t handle) const;
 
   /**
   * Get an instance handle for a new instance.
   */
   DDS::InstanceHandle_t get_next_handle(const DDS::BuiltinTopicKey_t& key);
 
-  virtual void purge_data(SubscriptionInstance_rch instance) = 0;
+  virtual void purge_data(RcHandle<SubscriptionInstance> instance) = 0;
 
   virtual void release_instance_i(DDS::InstanceHandle_t handle) = 0;
-  virtual void state_updated_i(DDS::InstanceHandle_t handle) = 0;
 
   bool has_readcondition(DDS::ReadCondition_ptr a_condition);
 
   /// @TODO: document why the instances_ container is mutable.
   mutable SubscriptionInstanceMapType instances_;
-
-  /// Assume since the container is mutable(?!!?) it may need to use the
-  /// lock while const.
-  /// @TODO: remove the recursive nature of the instances_lock if not needed.
-  mutable ACE_Recursive_Thread_Mutex instances_lock_;
+  LookupMap combined_state_lookup_;
 
   /// Check if the received data sample or instance should
   /// be filtered.
@@ -659,12 +656,12 @@ protected:
    */
   bool filter_sample(const DataSampleHeader& header);
 
-  bool ownership_filter_instance(const SubscriptionInstance_rch& instance,
+  bool ownership_filter_instance(const RcHandle<SubscriptionInstance>& instance,
                                  const PublicationId& pubid);
-  bool time_based_filter_instance(const SubscriptionInstance_rch& instance,
+  bool time_based_filter_instance(const RcHandle<SubscriptionInstance>& instance,
                                   TimeDuration& filter_time_expired);
 
-  void accept_sample_processing(const SubscriptionInstance_rch& instance, const DataSampleHeader& header, bool is_new_instance);
+  void accept_sample_processing(const RcHandle<SubscriptionInstance>& instance, const DataSampleHeader& header, bool is_new_instance);
 
   virtual void qos_change(const DDS::DataReaderQos& qos);
 
@@ -718,6 +715,12 @@ protected:
   virtual void add_link(const DataLink_rch& link, const RepoId& peer);
 
 private:
+
+  virtual void set_instance_state_i(DDS::InstanceHandle_t instance,
+                                    DDS::InstanceStateKind state,
+                                    const SystemTimePoint& timestamp = SystemTimePoint::now(),
+                                    const GUID_t& = GUID_UNKNOWN) = 0;
+
 
   void notify_subscription_lost(const DDS::InstanceHandleSeq& handles);
 
@@ -931,6 +934,17 @@ private:
 protected:
   typedef OPENDDS_SET(Encoding::Kind) EncodingKinds;
   EncodingKinds decoding_modes_;
+
+  struct IndexInstanceState {
+    InstanceStateUpdateList isul;
+    DataReaderImpl& reader_;
+
+    IndexInstanceState(DataReaderImpl& reader)
+      : reader_(reader)
+    {}
+
+    ~IndexInstanceState();
+  };
 
 public:
   class OpenDDS_Dcps_Export OnDataOnReaders : public JobQueue::Job {

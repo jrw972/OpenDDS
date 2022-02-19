@@ -11,7 +11,6 @@
 #include /**/ "ace/pre.h"
 #include "dcps_export.h"
 #include "ReceivedDataElementList.h"
-#include "SubscriptionInstance.h"
 
 #if !defined (ACE_LACKS_PRAGMA_ONCE)
 # pragma once
@@ -22,11 +21,13 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace DCPS {
 
+class SubscriptionInstance;
+
 /// Rake is an abbreviation for "read or take".  This struct holds the
 /// data used by the data structures in RakeResults<T>.
 struct OpenDDS_Dcps_Export RakeData {
   ReceivedDataElement* rde_;
-  SubscriptionInstance_rch si_;
+  RcHandle<SubscriptionInstance> si_;
   size_t index_in_instance_;
 };
 

@@ -48,7 +48,7 @@ GroupRakeData::get_datareaders(DDS::DataReaderSeq & readers)
   CORBA::ULong i = 0;
   SortedSet::iterator itEnd = this->sorted_.end();
   for (SortedSet::iterator it = this->sorted_.begin(); it != itEnd; ++it) {
-    RcHandle<DDS::DataReader> reader = it->si_->instance_state_->data_reader().lock();
+    RcHandle<DDS::DataReader> reader = it->si_->data_reader().lock();
     if (reader) {
       readers[i++] = DDS::DataReader::_duplicate(reader.in());
     } else {

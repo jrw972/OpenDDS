@@ -19,8 +19,8 @@
 #include "DataSampleHeader.h"
 #include "Definitions.h"
 #include "GuidUtils.h"
-#include "InstanceState.h"
 #include "Time_Helper.h"
+#include "TimeTypes.h"
 #include "unique_ptr.h"
 
 #include "dds/DdsDcpsInfrastructureC.h"
@@ -205,7 +205,7 @@ public:
 
 class OpenDDS_Dcps_Export ReceivedDataElementList {
 public:
-  explicit ReceivedDataElementList(InstanceState_rch instance_state = InstanceState_rch());
+  ReceivedDataElementList();
 
   ~ReceivedDataElementList();
 
@@ -214,11 +214,9 @@ public:
   // adds a data sample to the end of the list
   void add(ReceivedDataElement* data_sample);
 
-  // returns true if the instance was released
-  bool remove(ReceivedDataElement* data_sample);
+  void remove(ReceivedDataElement* data_sample);
 
-  // returns true if the instance was released
-  bool remove(ReceivedDataFilter& match, bool eval_all);
+  void remove(ReceivedDataFilter& match, bool eval_all);
 
   ReceivedDataElement* remove_head();
   ReceivedDataElement* remove_tail();
@@ -231,9 +229,6 @@ public:
 
   /// Number of elements in the list.
   ssize_t size_;
-
-private:
-  InstanceState_rch instance_state_;
 }; // ReceivedDataElementList
 
 } // namespace DCPS

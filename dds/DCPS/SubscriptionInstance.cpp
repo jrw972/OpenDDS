@@ -16,14 +16,13 @@ namespace DCPS {
 
 SubscriptionInstance::SubscriptionInstance(DataReaderImpl* reader,
                                            const DDS::DataReaderQos& qos,
-                                           ACE_Recursive_Thread_Mutex& lock,
                                            DDS::InstanceHandle_t handle,
                                            bool owns_handle)
-  : instance_state_(make_rch<InstanceState>(reader, ref(lock), handle))
-  , rcvd_samples_(instance_state_)
-  , instance_handle_(handle)
+  : instance_handle_(handle)
   , owns_handle_(owns_handle)
   , deadline_timer_id_(-1)
+  , instance_state_(make_rch<InstanceState>(reader, handle))
+  , rcvd_samples_()
 {
   switch (qos.destination_order.kind) {
   case DDS::BY_RECEPTION_TIMESTAMP_DESTINATIONORDER_QOS:
@@ -44,10 +43,20 @@ SubscriptionInstance::SubscriptionInstance(DataReaderImpl* reader,
 
 SubscriptionInstance::~SubscriptionInstance()
 {
+  purge_data();
+
   if (owns_handle_) {
     const RcHandle<DataReaderImpl> reader = instance_state_->data_reader().lock();
     if (reader) {
       reader->return_handle(instance_handle_);
+
+#ifndef OPENDDS_NO_OWNERSHIP_KIND_EXCLUSIVE
+      if (instance_state_->registered()) {
+        DataReaderImpl::OwnershipManagerPtr om = reader->ownership_manager();
+        if (om) om->remove_instance(rchandle_from(this));
+      }
+#endif
+
     }
   }
 }

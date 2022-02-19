@@ -28,6 +28,7 @@ namespace OpenDDS {
 namespace DCPS {
 
 class DataReaderImpl;
+class SubscriptionInstance;
 
 class OpenDDS_Dcps_Export OwnershipManager {
 public:
@@ -65,7 +66,7 @@ public:
   };
 
   typedef OPENDDS_VECTOR(WriterInfo) WriterInfos;
-  typedef OPENDDS_VECTOR(InstanceState_rch) InstanceStateVec;
+  typedef OPENDDS_VECTOR(RcHandle<SubscriptionInstance>) InstanceStateVec;
 
   struct OwnershipWriterInfos {
     WriterInfo owner_;
@@ -136,17 +137,16 @@ public:
   /**
   * Determine if the provided publication can be the owner.
   */
-  bool select_owner(const DDS::InstanceHandle_t& instance_handle,
+  bool select_owner(RcHandle<SubscriptionInstance> instance,
                     const PublicationId& pub_id,
-                    const CORBA::Long& ownership_strength,
-                    InstanceState_rch instance_state);
+                    const CORBA::Long& ownership_strength);
 
   /**
   * Remove an owner of the specified instance.
   */
   void remove_owner(const DDS::InstanceHandle_t& instance_handle);
 
-  void remove_instance(InstanceState* instance_state);
+  void remove_instance(RcHandle<SubscriptionInstance> instance);
 
   /**
   * Update the ownership strength of a publication.

@@ -27,7 +27,8 @@ RakeResults<SampleSeq>::RakeResults(DataReaderImpl* reader,
 #ifndef OPENDDS_NO_QUERY_CONDITION
                                     DDS::QueryCondition_ptr cond,
 #endif
-                                    Operation_t oper)
+                                    Operation_t oper,
+                                    InstanceStateUpdateList& isul)
   : reader_(reader)
   , received_data_(received_data)
   , info_seq_(info_seq)
@@ -36,6 +37,7 @@ RakeResults<SampleSeq>::RakeResults(DataReaderImpl* reader,
   , cond_(cond)
 #endif
   , oper_(oper)
+  , isul_(isul)
   , do_sort_(false)
   , do_filter_(false)
 {
@@ -82,7 +84,7 @@ RakeResults<SampleSeq>::RakeResults(DataReaderImpl* reader,
 
 template <class SampleSeq>
 bool RakeResults<SampleSeq>::insert_sample(ReceivedDataElement* sample,
-                                           SubscriptionInstance_rch instance,
+                                           RcHandle<SubscriptionInstance> instance,
                                            size_t index_in_instance)
 {
 #ifndef OPENDDS_NO_QUERY_CONDITION
@@ -147,49 +149,7 @@ bool RakeResults<SampleSeq>::copy_into(FwdIter iter, FwdIter end,
       received_data_p.assign_ptr(idx, rde);
     }
 
-    // 2. Per-sample SampleInfo (not the three *_rank variables) and state
-    SubscriptionInstance& inst = *iter->si_;
-    inst.instance_state_->sample_info(info_seq_[idx], rde);
-    rde->sample_state_ = DDS::READ_SAMPLE_STATE;
-
-    // 3. Record some info about per-instance SampleInfo (*_rank) so that
-    //    we can fill in the ranks after the loop has completed
-    std::pair<typename InstanceMap::iterator, bool> result =
-      inst_map.insert(std::make_pair(&inst, InstanceData()));
-    InstanceData& id = result.first->second;
-
-    if (result.second) { // first time we've seen this Instance
-      ReceivedDataElement& mrs = *inst.rcvd_samples_.tail_;
-      id.MRS_disposed_gc_ =
-        static_cast<CORBA::Long>(mrs.disposed_generation_count_);
-      id.MRS_nowriters_gc_ =
-        static_cast<CORBA::Long>(mrs.no_writers_generation_count_);
-    }
-
-    if (iter->index_in_instance_ >= id.MRSIC_index_) {
-      id.MRSIC_index_ = iter->index_in_instance_;
-      id.MRSIC_disposed_gc_ =
-        static_cast<CORBA::Long>(rde->disposed_generation_count_);
-      id.MRSIC_nowriters_gc_ =
-        static_cast<CORBA::Long>(rde->no_writers_generation_count_);
-    }
-
-    if (!id.most_recent_generation_) {
-      id.most_recent_generation_ =
-        inst.instance_state_->most_recent_generation(rde);
-    }
-
-    id.sampleinfo_positions_.push_back(idx);
-
-    // 4. Take
-    if (oper_ == DDS_OPERATION_TAKE) {
-      // If removing the sample releases it
-      if (inst.rcvd_samples_.remove(rde)) {
-        // Prevent access of the SampleInfo, below
-        released_instances.insert(&inst);
-      }
-      rde->dec_ref();
-    }
+    iter->si_->copy_into(idx, info_seq_, iter, inst_map, released_instances, oper_ == DDS_OPERATION_TAKE, isul_);
   }
 
   // Fill in the *_ranks in the SampleInfo, and set instance state (mrg)
@@ -202,7 +162,7 @@ bool RakeResults<SampleSeq>::copy_into(FwdIter iter, FwdIter end,
       // If this instance has not been released
       if (released_instances.find(&inst) == released_instances.end()) {
         if (id.most_recent_generation_) {
-          inst.instance_state_->accessed();
+          inst.accessed(isul_);
         }
       }
     }
