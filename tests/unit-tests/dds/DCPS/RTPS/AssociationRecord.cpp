@@ -138,8 +138,11 @@ TEST(dds_DCPS_RTPS_AssociationRecord, BuiltinAssociationRecord_local_tokens_sent
 
 class MockDataWriterCallbacks : public DataWriterCallbacks {
 public:
-  virtual void add_association(const GUID_t&,
-                               const ReaderAssociation&,
+
+  virtual void set_publication_id(const GUID_t&)
+  {}
+
+  virtual void add_association(const ReaderAssociation&,
                                bool)
   {}
 
@@ -194,8 +197,10 @@ TEST(dds_DCPS_RTPS_AssociationRecord, WriterAssociationRecord_ctor)
 
 class MockDataReaderCallbacks : public DataReaderCallbacks {
 public:
-  virtual void add_association(const GUID_t&,
-                               const WriterAssociation&,
+  virtual void set_subscription_id(const GUID_t&)
+  {}
+
+  virtual void add_association(const WriterAssociation&,
                                bool)
   {}
 

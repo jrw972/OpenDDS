@@ -436,6 +436,8 @@ OpenDDS::DCPS::GUID_t TAO_DDS_DCPSInfo_i::add_publication(
     dispatchingPublication = OpenDDS::DCPS::DataWriterRemote::_unchecked_narrow(pubObj);
   }
 
+  dispatchingPublication->set_publication_id(pubId);
+
   OpenDDS::DCPS::unique_ptr<DCPS_IR_Publication> pubPtr(
     new DCPS_IR_Publication(
                    pubId,
@@ -750,6 +752,8 @@ OpenDDS::DCPS::GUID_t TAO_DDS_DCPSInfo_i::add_subscription(
       }
       dispatchingSubscription = OpenDDS::DCPS::DataReaderRemote::_unchecked_narrow(subObj);
     }
+
+    dispatchingSubscription->set_subscription_id(subId);
 
     subPtr.reset(
       new DCPS_IR_Subscription(

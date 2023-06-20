@@ -6119,7 +6119,7 @@ DCPS::TopicStatus Sedp::remove_topic(const GUID_t& topicId)
   return DCPS::REMOVED;
 }
 
-GUID_t Sedp::add_publication(
+void Sedp::add_publication(
   const GUID_t& topicId,
   DCPS::DataWriterCallbacks_rch publication,
   const DDS::DataWriterQos& qos,
@@ -6127,10 +6127,11 @@ GUID_t Sedp::add_publication(
   const DDS::PublisherQos& publisherQos,
   const XTypes::TypeInformation& type_info)
 {
-  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, GUID_t());
+  ACE_GUARD(ACE_Thread_Mutex, g, lock_);
 
   GUID_t rid = participant_id_;
   assign_publication_key(rid, topicId, qos);
+  publication->set_publication_id(rid);
   LocalPublication& pb = local_publications_[rid];
   pb.topic_id_ = topicId;
   pb.publication_ = publication;
@@ -6199,11 +6200,11 @@ GUID_t Sedp::add_publication(
   td.add_local_publication(rid);
 
   if (DDS::RETCODE_OK != add_publication_i(rid, pb)) {
-    return GUID_t();
+    return;
   }
 
   if (DDS::RETCODE_OK != write_publication_data(rid, pb)) {
-    return GUID_t();
+    return;
   }
 
   if (DCPS_debug_level > 3) {
@@ -6211,8 +6212,6 @@ GUID_t Sedp::add_publication(
                ACE_TEXT("calling match_endpoints\n")));
   }
   match_endpoints(rid, td);
-
-  return rid;
 }
 
 void Sedp::remove_publication(const GUID_t& publicationId)
@@ -6258,7 +6257,7 @@ void Sedp::update_publication_locators(const GUID_t& publicationId,
   }
 }
 
-GUID_t Sedp::add_subscription(
+void Sedp::add_subscription(
   const GUID_t& topicId,
   DCPS::DataReaderCallbacks_rch subscription,
   const DDS::DataReaderQos& qos,
@@ -6269,10 +6268,11 @@ GUID_t Sedp::add_subscription(
   const DDS::StringSeq& params,
   const XTypes::TypeInformation& type_info)
 {
-  ACE_GUARD_RETURN(ACE_Thread_Mutex, g, lock_, GUID_t());
+  ACE_GUARD(ACE_Thread_Mutex, g, lock_);
 
   GUID_t rid = participant_id_;
   assign_subscription_key(rid, topicId, qos);
+  subscription->set_subscription_id(rid);
   LocalSubscription& sb = local_subscriptions_[rid];
   sb.topic_id_ = topicId;
   sb.subscription_ = subscription;
@@ -6345,11 +6345,11 @@ GUID_t Sedp::add_subscription(
   td.add_local_subscription(rid);
 
   if (DDS::RETCODE_OK != add_subscription_i(rid, sb)) {
-    return GUID_t();
+    return;
   }
 
   if (DDS::RETCODE_OK != write_subscription_data(rid, sb)) {
-    return GUID_t();
+    return;
   }
 
   if (DCPS_debug_level > 3) {
@@ -6357,8 +6357,6 @@ GUID_t Sedp::add_subscription(
                ACE_TEXT("calling match_endpoints\n")));
   }
   match_endpoints(rid, td);
-
-  return rid;
 }
 
 void Sedp::remove_subscription(const GUID_t& subscriptionId)
@@ -7643,7 +7641,7 @@ void Sedp::WriterAddAssociation::handle_event()
                  ACE_TEXT("adding writer %C association for reader %C\n"), LogGuid(record_->writer_id()).c_str(),
                  LogGuid(record_->reader_id()).c_str()));
     }
-    lock->add_association(record_->writer_id(), record_->reader_association_, true);
+    lock->add_association(record_->reader_association_, true);
   }
 }
 
@@ -7674,7 +7672,7 @@ void Sedp::ReaderAddAssociation::handle_event()
                  ACE_TEXT("adding reader %C association for writer %C\n"), LogGuid(record_->reader_id()).c_str(),
                  LogGuid(record_->writer_id()).c_str()));
     }
-    lock->add_association(record_->reader_id(), record_->writer_association_, false);
+    lock->add_association(record_->writer_association_, false);
   }
 }
 

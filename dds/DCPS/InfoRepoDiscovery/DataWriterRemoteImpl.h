@@ -35,8 +35,9 @@ public:
 
   virtual ~DataWriterRemoteImpl();
 
-  virtual void add_association(const GUID_t& yourId,
-                               const ReaderAssociation& readers,
+  virtual void set_publication_id(const GUID_t& guid);
+
+  virtual void add_association(const ReaderAssociation& readers,
                                bool active);
 
   virtual void remove_associations(const ReaderIdSeq& readers,

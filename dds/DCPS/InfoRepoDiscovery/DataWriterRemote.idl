@@ -19,9 +19,10 @@ module OpenDDS {
     // It is split out so the DDS::DataWriter interface can be local.
     interface DataWriterRemote {
 
+      oneway void set_publication_id(in GUID_t guid);
+
       // will tell transport and call on_publication_matched()
       oneway void add_association(
-        in GUID_t yourId,
         in ReaderAssociation reader,
         in boolean active);
 

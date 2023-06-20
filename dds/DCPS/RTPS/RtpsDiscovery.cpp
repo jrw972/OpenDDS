@@ -1319,7 +1319,7 @@ bool RtpsDiscovery::update_topic_qos(const GUID_t& topicId, DDS::DomainId_t doma
   return false;
 }
 
-GUID_t RtpsDiscovery::add_publication(
+void RtpsDiscovery::add_publication(
   DDS::DomainId_t domainId,
   const GUID_t& participantId,
   const GUID_t& topicId,
@@ -1329,8 +1329,7 @@ GUID_t RtpsDiscovery::add_publication(
   const DDS::PublisherQos& publisherQos,
   const XTypes::TypeInformation& type_info)
 {
-  return get_part(domainId, participantId)->add_publication(
-    topicId, publication, qos, transInfo, publisherQos, type_info);
+  get_part(domainId, participantId)->add_publication(topicId, publication, qos, transInfo, publisherQos, type_info);
 }
 
 bool RtpsDiscovery::remove_publication(
@@ -1365,7 +1364,7 @@ void RtpsDiscovery::update_publication_locators(
   get_part(domainId, partId)->update_publication_locators(dwId, transInfo);
 }
 
-GUID_t RtpsDiscovery::add_subscription(
+void RtpsDiscovery::add_subscription(
   DDS::DomainId_t domainId,
   const GUID_t& participantId,
   const GUID_t& topicId,
@@ -1378,9 +1377,15 @@ GUID_t RtpsDiscovery::add_subscription(
   const DDS::StringSeq& params,
   const XTypes::TypeInformation& type_info)
 {
-  return get_part(domainId, participantId)->add_subscription(
-    topicId, subscription, qos, transInfo, subscriberQos, filterClassName,
-    filterExpr, params, type_info);
+  get_part(domainId, participantId)->add_subscription(topicId,
+                                                      subscription,
+                                                      qos,
+                                                      transInfo,
+                                                      subscriberQos,
+                                                      filterClassName,
+                                                      filterExpr,
+                                                      params,
+                                                      type_info);
 }
 
 bool RtpsDiscovery::remove_subscription(
