@@ -5305,83 +5305,6 @@ jobs:
         cd OpenDDS
         . setenv.sh
         make -j4
-    - name: Build CMake Tests
-      run: |
-        source OpenDDS/setenv.sh
-        mkdir OpenDDS/tests/cmake/build
-        cd OpenDDS/tests/cmake/build
-        cmake ..
-        cmake --build . -- -j4
-    - name: configure messenger tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/DCPS/Messenger
-        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
-    - name: make messenger tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/DCPS/Messenger
-        make
-    - name: configure C++11 messenger test
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/DCPS/C++11
-        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
-    - name: make C++11 messenger test
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/DCPS/C++11
-        make
-    - name: configure compiler tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/DCPS/Compiler
-        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
-    - name: make compiler tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/DCPS/Compiler
-        make
-    - name: configure unit tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/unit-tests
-        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
-    - name: make unit tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/unit-tests
-        make
-    - name: configure security tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/security/attributes
-        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
-    - name: build security tests
-      shell: bash
-      run: |
-        cd OpenDDS
-        . setenv.sh
-        cd tests/security/attributes
-        make -j $(getconf _NPROCESSORS_ONLN)
     - name: create OpenDDS tar.xz artifact
       shell: bash
       run: |
@@ -5467,6 +5390,13 @@ jobs:
         sudo sysctl -w kernel.core_pattern=core.%e.%p
         echo Core file pattern set to:
         cat /proc/sys/kernel/core_pattern
+    - name: Build CMake Tests
+      run: |
+        source OpenDDS/setenv.sh
+        mkdir OpenDDS/tests/cmake/build
+        cd OpenDDS/tests/cmake/build
+        cmake ..
+        cmake --build . -- -j4
     - name: run OpenDDS tests
       shell: bash
       run: |
@@ -5598,6 +5528,34 @@ jobs:
         sudo sysctl -w kernel.core_pattern=core.%e.%p
         echo Core file pattern set to:
         cat /proc/sys/kernel/core_pattern
+    - name: configure messenger tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/DCPS/Messenger
+        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
+    - name: make messenger tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/DCPS/Messenger
+        make
+    - name: configure C++11 messenger test
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/DCPS/C++11
+        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
+    - name: make C++11 messenger test
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/DCPS/C++11
+        make
     - name: run OpenDDS tests
       shell: bash
       run: |
@@ -5728,6 +5686,20 @@ jobs:
         sudo sysctl -w kernel.core_pattern=core.%e.%p
         echo Core file pattern set to:
         cat /proc/sys/kernel/core_pattern
+    - name: configure compiler tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/DCPS/Compiler
+        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
+    - name: make compiler tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/DCPS/Compiler
+        make
     - name: run OpenDDS tests
       shell: bash
       run: |
@@ -5858,6 +5830,20 @@ jobs:
         sudo sysctl -w kernel.core_pattern=core.%e.%p
         echo Core file pattern set to:
         cat /proc/sys/kernel/core_pattern
+    - name: configure unit tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/unit-tests
+        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
+    - name: make unit tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/unit-tests
+        make
     - name: run OpenDDS tests
       shell: bash
       run: |
@@ -5974,6 +5960,20 @@ jobs:
         sudo sysctl -w kernel.core_pattern=core.%e.%p
         echo Core file pattern set to:
         cat /proc/sys/kernel/core_pattern
+    - name: configure security tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/security/attributes
+        perl $ACE_ROOT/bin/mwc.pl -type gnuace -static
+    - name: build security tests
+      shell: bash
+      run: |
+        cd OpenDDS
+        . setenv.sh
+        cd tests/security/attributes
+        make -j $(getconf _NPROCESSORS_ONLN)
     - name: run security tests
       shell: bash
       run: |
