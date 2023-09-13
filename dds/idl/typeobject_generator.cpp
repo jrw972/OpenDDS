@@ -16,6 +16,8 @@
 
 #include <utl_identifier.h>
 
+#include <bzlib.h>
+
 using std::string;
 using namespace AstTypeClassification;
 
@@ -673,6 +675,59 @@ typeobject_generator::gen_epilogue()
       "  }\n"
       "  return tm;\n"
       "}\n";
+
+    size_t minimal_size;
+    {
+      OpenDDS::XTypes::TypeIdentifierTypeObjectPairSeq seq;
+      for (OpenDDS::XTypes::TypeMap::const_iterator pos = minimal_type_map_.begin();
+           pos != minimal_type_map_.end(); ++pos) {
+        size_t idx = seq.length();
+        seq.length(idx + 1);
+        seq[idx].type_identifier = pos->first;
+        seq[idx].type_object = pos->second;
+      }
+
+      ACE_Message_Block buffer(OpenDDS::DCPS::serialized_size(OpenDDS::XTypes::get_typeobject_encoding(), seq));
+      OpenDDS::DCPS::Serializer ser(&buffer, OpenDDS::XTypes::get_typeobject_encoding());
+      if (!(ser << seq)) {
+        be_util::misc_error_and_abort("Failed to serialize type object");
+      }
+
+      minimal_size = buffer.wr_ptr() - buffer.rd_ptr();
+    }
+
+    size_t complete_size;
+    unsigned int compressed_size;
+    int res;
+    {
+      OpenDDS::XTypes::TypeIdentifierTypeObjectPairSeq seq;
+      for (OpenDDS::XTypes::TypeMap::const_iterator pos = complete_type_map_.begin();
+           pos != complete_type_map_.end(); ++pos) {
+        size_t idx = seq.length();
+        seq.length(idx + 1);
+        seq[idx].type_identifier = pos->first;
+        seq[idx].type_object = pos->second;
+      }
+
+      ACE_Message_Block buffer(OpenDDS::DCPS::serialized_size(OpenDDS::XTypes::get_typeobject_encoding(), seq));
+      OpenDDS::DCPS::Serializer ser(&buffer, OpenDDS::XTypes::get_typeobject_encoding());
+      if (!(ser << seq)) {
+        be_util::misc_error_and_abort("Failed to serialize type object");
+      }
+
+      complete_size = buffer.wr_ptr() - buffer.rd_ptr();
+
+      const size_t buffer_size = complete_size * 1.01 + 600;
+      char* buf = new char[buffer_size];
+
+      compressed_size = buffer_size;
+      res = BZ2_bzBuffToBuffCompress(buf, &compressed_size, buffer.rd_ptr(), complete_size, 9, 0, 0);
+      delete[] buf;
+    }
+
+    if (minimal_size != 0) {
+      be_global->impl_ << "// minimal size " << minimal_size << " complete size " << complete_size << " diff " << (complete_size - minimal_size) << " factor " << (double(complete_size) / double(minimal_size)) << " compressed " << compressed_size << " res " << res << std::endl;
+    }
   }
 }
 

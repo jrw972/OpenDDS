@@ -15,7 +15,7 @@ class typeobject_generator : public dds_generator {
 public:
   typeobject_generator()
     : produce_output_(false)
-    , produce_xtypes_complete_(false)
+    , produce_xtypes_complete_(true)
     , index_(0)
     , get_type_map_declared_(false)
     , typeid_encoding_(0)
