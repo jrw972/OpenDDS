@@ -49,6 +49,8 @@ project(OpenDDS_Dcps): core, coverage_optional, \
 
   Header_Files {
     OpenDDSConfig.h
+    OpenDDSConfigWrapper.h
+    OpenDDSConfigWrapperC.h
     Version.h
     Versioned_Namespace.h
     DCPS
