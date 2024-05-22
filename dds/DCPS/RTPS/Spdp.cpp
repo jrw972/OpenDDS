@@ -10,16 +10,19 @@
 #include "ParameterListConverter.h"
 #include "RtpsDiscovery.h"
 
-#include <dds/DCPS/Service_Participant.h>
+#include <dds/DCPS/ConnectionRecords.h>
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidConverter.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/Ice.h>
 #include <dds/DCPS/LogAddr.h>
 #include <dds/DCPS/Logging.h>
 #include <dds/DCPS/Qos_Helper.h>
-#include <dds/DCPS/ConnectionRecords.h>
+#include <dds/DCPS/Service_Participant.h>
+
 #include <dds/DCPS/transport/framework/TransportDebug.h>
-#ifdef OPENDDS_SECURITY
+
+#if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/framework/SecurityRegistry.h>
 #endif
 
@@ -72,7 +75,7 @@ namespace {
   }
 #endif
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 
 #ifndef DDS_HAS_MINIMUM_BIT
   DCPS::ParticipantLocation compute_ice_location_mask(const DCPS::NetworkAddress& address)
@@ -180,7 +183,7 @@ void Spdp::init(DDS::DomainId_t /*domain*/,
       BUILTIN_ENDPOINT_TYPE_LOOKUP_REPLY_DATA_WRITER;
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (is_security_enabled()) {
     using namespace DDS::Security;
 
@@ -234,7 +237,7 @@ Spdp::Spdp(DDS::DomainId_t domain,
   , max_spdp_sequence_msg_reset_check_(disco->config()->max_spdp_sequence_msg_reset_check())
   , check_source_ip_(disco->config()->check_source_ip())
   , undirected_spdp_(disco->config()->undirected_spdp())
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   , max_participants_in_authentication_(disco->config()->max_participants_in_authentication())
   , security_unsecure_lease_duration_(disco->config()->security_unsecure_lease_duration())
   , auth_resend_period_(disco->config()->auth_resend_period())
@@ -252,7 +255,7 @@ Spdp::Spdp(DDS::DomainId_t domain,
   , shutdown_flag_(false)
   , available_builtin_endpoints_(0)
   , sedp_(DCPS::make_rch<Sedp>(guid_, DCPS::ref(*this), DCPS::ref(lock_)))
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   , available_extended_builtin_endpoints_(0)
   , security_config_()
   , security_enabled_(false)
@@ -267,13 +270,13 @@ Spdp::Spdp(DDS::DomainId_t domain,
 
   init(domain, guid, qos, tls);
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   init_participant_sec_attributes(participant_sec_attr_);
 #endif
 
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 Spdp::Spdp(DDS::DomainId_t domain,
            const DCPS::GUID_t& guid,
            const DDS::DomainParticipantQos& qos,
@@ -393,7 +396,7 @@ Spdp::shutdown()
                  ACE_TEXT("remove discovered participants\n")));
     }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     try {
       write_secure_disposes();
     } catch (const CORBA::Exception& e) {
@@ -403,7 +406,7 @@ Spdp::shutdown()
 #endif
 
     for (DiscoveredParticipantIter part = participants_.begin(); part != participants_.end(); ++part) {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = sedp_->get_ice_endpoint();
       if (sedp_endpoint) {
         stop_ice(sedp_endpoint, part->first, part->second.pdata_.participantProxy.availableBuiltinEndpoints,
@@ -419,7 +422,7 @@ Spdp::shutdown()
     }
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = sedp_->get_ice_endpoint();
   if (sedp_endpoint) {
     const GUID_t l = make_id(guid_, ENTITYID_SEDP_BUILTIN_PUBLICATIONS_READER);
@@ -448,7 +451,7 @@ Spdp::~Spdp()
 {
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 void
 Spdp::write_secure_updates()
 {
@@ -472,7 +475,7 @@ Spdp::write_secure_disposes()
 namespace {
   DDS::ParticipantBuiltinTopicData& partBitData(ParticipantData_t& pdata)
   {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     return pdata.ddsParticipantDataSecure.base.base;
 #else
     return pdata.ddsParticipantData;
@@ -700,7 +703,7 @@ bool ip_in_locator_list(const DCPS::NetworkAddress& from, const DCPS::LocatorSeq
   return false;
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 bool ip_in_AgentInfo(const DCPS::NetworkAddress& from, const ParameterList& plist)
 {
   bool found = false;
@@ -766,7 +769,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
 
   // Don't trust SPDP for the RtpsRelay application participant.
   // Otherwise, anyone can reset the application participant.
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (is_security_enabled() && !from_sedp) {
     pdata.participantProxy.opendds_rtps_relay_application_participant = false;
   }
@@ -781,7 +784,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
       return;
     }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     if (max_participants_in_authentication_ &&
         n_participants_in_authentication_ >= max_participants_in_authentication_) {
       if (DCPS::security_debug.auth_debug) {
@@ -806,7 +809,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
     }
 
     if (!from_sedp) {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       if (is_security_enabled()) {
         effective_lease = security_unsecure_lease_duration_;
       } else {
@@ -821,7 +824,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
           }
           effective_lease = maxLeaseDuration;
         }
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       }
 #endif
     }
@@ -837,7 +840,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
 
     // add a new participant
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     std::pair<DiscoveredParticipantIter, bool> p = participants_.insert(std::make_pair(guid, DiscoveredParticipant(pdata, seq, auth_resend_period_)));
     ++n_participants_in_authentication_;
     if (DCPS::security_debug.auth_debug) {
@@ -868,7 +871,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
 #endif
 
     sedp_->associate(iter->second
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
                      , participant_sec_attr_
 #endif
                      );
@@ -883,7 +886,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
       }
     }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     if (is_security_enabled()) {
       if (!iter->second.has_security_data()) {
         if (!participant_sec_attr_.allow_unauthenticated_participants) {
@@ -953,7 +956,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
       enqueue_location_update_i(iter, location_mask, from, "existing participant");
     }
 #endif
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     // Non-secure updates for authenticated participants are used for liveliness but
     // are otherwise ignored. Non-secure dispose messages are ignored completely.
     if (is_security_enabled() && iter->second.auth_state_ == AUTH_STATE_AUTHENTICATED && !from_sedp) {
@@ -969,7 +972,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
 #endif
 
     if (id == DCPS::DISPOSE_INSTANCE || id == DCPS::DISPOSE_UNREGISTER_INSTANCE) {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = sedp_->get_ice_endpoint();
       if (sedp_endpoint) {
         stop_ice(sedp_endpoint, iter->first, iter->second.pdata_.participantProxy.availableBuiltinEndpoints,
@@ -1031,7 +1034,7 @@ Spdp::handle_participant_data(DCPS::MessageId id,
 #endif
     // Else a reset has occurred and check if we should remove the participant
     } else if (iter->second.seq_reset_count_ >= max_spdp_sequence_msg_reset_check_) {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       purge_handshake_deadlines(iter);
 #endif
 #ifndef DDS_HAS_MINIMUM_BIT
@@ -1085,7 +1088,7 @@ Spdp::data_received(const DataSubmessage& data,
 
   pdata.participantProxy.domainId = domain_;
   pdata.discoveredAt = now.to_monotonic_time();
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   pdata.ddsParticipantDataSecure.base.base.key = DCPS::BUILTIN_TOPIC_KEY_UNKNOWN;
 #endif
 
@@ -1111,7 +1114,7 @@ Spdp::data_received(const DataSubmessage& data,
 
   const DCPS::MessageId msg_id = (data.inlineQos.length() && disposed(data.inlineQos)) ? DCPS::DISPOSE_INSTANCE : DCPS::SAMPLE_DATA;
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   const bool from_relay = sedp_->core().from_relay(from);
 
   if (check_source_ip_ && msg_id == DCPS::SAMPLE_DATA && !from_relay && !ip_in_locator_list(from, pdata.participantProxy.metatrafficUnicastLocatorList) && !ip_in_AgentInfo(from, plist)) {
@@ -1158,7 +1161,7 @@ Spdp::match_unauthenticated(const DiscoveredParticipantIter& dp_iter)
 #endif /* DDS_HAS_MINIMUM_BIT */
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 
 void
 Spdp::handle_auth_request(const DDS::Security::ParticipantStatelessMessage& msg)
@@ -2180,7 +2183,7 @@ Spdp::init_bit(DCPS::RcHandle<DCPS::BitSubscriber> bit_subscriber)
   sedp_->init(guid_, *disco_, domain_, type_lookup_service_);
   tport_->open(sedp_->reactor_task(), sedp_->job_queue());
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = sedp_->get_ice_endpoint();
   if (sedp_endpoint) {
     const GUID_t l = make_id(guid_, ENTITYID_SEDP_BUILTIN_PUBLICATIONS_READER);
@@ -2217,7 +2220,7 @@ Spdp::is_expectant_opendds(const GUID_t& participant) const
 }
 
 ParticipantData_t Spdp::build_local_pdata(
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   bool always_in_the_clear,
   Security::DiscoveredParticipantDataKind kind
 #endif
@@ -2251,7 +2254,7 @@ ParticipantData_t Spdp::build_local_pdata(
     }
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   const Security::SPDPdiscoveredParticipantData pdata = {
     kind,
     { // ParticipantBuiltinTopicDataSecure
@@ -2290,7 +2293,7 @@ ParticipantData_t Spdp::build_local_pdata(
       , qos_.property
       , { participant_flags_ } // opendds_participant_flags
       , is_application_participant_
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       , available_extended_builtin_endpoints_
 #endif
     },
@@ -2308,7 +2311,7 @@ ParticipantData_t Spdp::build_local_pdata(
 bool Spdp::announce_domain_participant_qos()
 {
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (is_security_enabled()) {
     write_secure_updates();
   }
@@ -2433,7 +2436,7 @@ Spdp::SpdpTransport::open(const DCPS::ReactorTask_rch& reactor_task,
   DCPS::RcHandle<Spdp> outer = outer_.lock();
   if (!outer) return;
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   // Add the endpoint before any sending and receiving occurs.
   DCPS::WeakRcHandle<ICE::Endpoint> endpoint = get_ice_endpoint();
   if (endpoint) {
@@ -2446,7 +2449,7 @@ Spdp::SpdpTransport::open(const DCPS::ReactorTask_rch& reactor_task,
   reactor(reactor_task->get_reactor());
   reactor_task->interceptor()->execute_or_enqueue(DCPS::make_rch<RegisterHandlers>(rchandle_from(this), reactor_task));
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   // Now that the endpoint is added, SEDP can write the SPDP info.
   if (outer->is_security_enabled()) {
     outer->write_secure_updates();
@@ -2465,7 +2468,7 @@ Spdp::SpdpTransport::open(const DCPS::ReactorTask_rch& reactor_task,
     DCPS::make_rch<SpdpSporadic>(TheServiceParticipant->time_source(), reactor_task->interceptor(),
                                  rchandle_from(this), &SpdpTransport::process_lease_expirations);
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   handshake_deadline_task_ =
     DCPS::make_rch<SpdpSporadic>(TheServiceParticipant->time_source(), reactor_task->interceptor(),
                                  rchandle_from(this), &SpdpTransport::process_handshake_deadlines);
@@ -2571,7 +2574,7 @@ Spdp::SpdpTransport::enable_periodic_tasks()
     local_send_task_->enable(TimeDuration::zero_value);
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   DCPS::RcHandle<Spdp> outer = outer_.lock();
   if (!outer) return;
 
@@ -2635,7 +2638,7 @@ Spdp::SpdpTransport::close(const DCPS::ReactorTask_rch& reactor_task)
 
   TheServiceParticipant->network_interface_address_topic()->disconnect(network_interface_address_reader_);
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   DCPS::WeakRcHandle<ICE::Endpoint> endpoint = get_ice_endpoint();
   if (endpoint) {
     outer->ice_agent_->remove_endpoint(endpoint);
@@ -2716,7 +2719,7 @@ Spdp::SpdpTransport::write_i(WriteFlags flags)
   }
 
   const ParticipantData_t pdata = outer->build_local_pdata(
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     true, outer->is_security_enabled() ? Security::DPDK_ENHANCED : Security::DPDK_ORIGINAL
 #endif
   );
@@ -2735,7 +2738,7 @@ Spdp::SpdpTransport::write_i(WriteFlags flags)
     return;
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (!outer->is_security_enabled()) {
     ICE::AgentInfoMap ai_map;
     DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = outer->sedp_->get_ice_endpoint();
@@ -2801,7 +2804,7 @@ Spdp::update_rtps_relay_application_participant_i(DiscoveredParticipantIter iter
   }
 
   if (new_participant) {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     tport_->relay_spdp_task_->cancel();
     sedp_->core().reset_relay_spdp_task_falloff();
     tport_->relay_spdp_task_->schedule(TimeDuration::zero_value);
@@ -2846,7 +2849,7 @@ Spdp::SpdpTransport::write_i(const DCPS::GUID_t& guid, const DCPS::NetworkAddres
   if (!outer) return;
 
   const ParticipantData_t pdata = outer->build_local_pdata(
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     true, outer->is_security_enabled() ? Security::DPDK_ENHANCED : Security::DPDK_ORIGINAL
 #endif
   );
@@ -2865,7 +2868,7 @@ Spdp::SpdpTransport::write_i(const DCPS::GUID_t& guid, const DCPS::NetworkAddres
     return;
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (!outer->is_security_enabled()) {
     ICE::AgentInfoMap ai_map;
     DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = outer->sedp_->get_ice_endpoint();
@@ -3208,7 +3211,7 @@ Spdp::SpdpTransport::handle_input(ACE_HANDLE h)
     return 0; // Ignore
   }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   // Assume STUN
   if (!outer->initialized() || outer->shutting_down()) {
     return 0;
@@ -3246,7 +3249,7 @@ Spdp::SpdpTransport::handle_input(ACE_HANDLE h)
 DCPS::WeakRcHandle<ICE::Endpoint>
 Spdp::SpdpTransport::get_ice_endpoint()
 {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   DCPS::RcHandle<Spdp> outer = outer_.lock();
   return outer && outer->sedp_->core().use_ice() ? DCPS::static_rchandle_cast<ICE::Endpoint>(rchandle_from(this)) : DCPS::WeakRcHandle<ICE::Endpoint>();
 #else
@@ -3254,7 +3257,7 @@ Spdp::SpdpTransport::get_ice_endpoint()
 #endif
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 ICE::AddressListType
 Spdp::SpdpTransport::host_addresses() const
 {
@@ -3392,7 +3395,7 @@ Spdp::SpdpTransport::ice_disconnect(const ICE::GuidSetType& guids, const ACE_INE
   outer->sedp_->job_queue()->enqueue(DCPS::make_rch<IceConnect>(outer, guids, DCPS::NetworkAddress(addr), false));
 }
 #endif /* DDS_HAS_MINIMUM_BIT */
-#endif /* OPENDDS_SECURITY */
+#endif
 
 void
 Spdp::signal_liveliness(DDS::LivelinessQosPolicyKind kind)
@@ -3668,7 +3671,7 @@ void Spdp::SpdpTransport::on_data_available(DCPS::ConfigReader_rch)
 
     if (sample.key_has_prefix(config_prefix)) {
       has_prefix = true;
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
       if (config->config_key("RTPS_RELAY_ONLY") == sample.key()) {
         const bool flag = config->rtps_relay_only();
         core.rtps_relay_only(flag);
@@ -3943,7 +3946,7 @@ Spdp::process_lease_expirations(const DCPS::MonotonicTimePoint& now)
                  DCPS::LogGuid(part->first).c_str()));
     }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
     DCPS::WeakRcHandle<ICE::Endpoint> sedp_endpoint = sedp_->get_ice_endpoint();
     if (sedp_endpoint) {
       stop_ice(sedp_endpoint, part->first, part->second.pdata_.participantProxy.availableBuiltinEndpoints,
@@ -3964,7 +3967,7 @@ Spdp::process_lease_expirations(const DCPS::MonotonicTimePoint& now)
   }
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 Spdp::ParticipantCryptoInfoPair
 Spdp::lookup_participant_crypto_info(const DCPS::GUID_t& id) const
 {
@@ -4044,7 +4047,7 @@ AuthState Spdp::lookup_participant_auth_state(const GUID_t& id) const
 }
 #endif
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 void Spdp::start_ice(DCPS::WeakRcHandle<ICE::Endpoint> endpoint, GUID_t r, BuiltinEndpointSet_t avail,
                      DDS::Security::ExtendedBuiltinEndpointSet_t extended_avail,
                      const ICE::AgentInfo& agent_info)
@@ -4496,7 +4499,7 @@ void Spdp::SpdpTransport::thread_status_task(const DCPS::MonotonicTimePoint& now
 #endif /* DDS_HAS_MINIMUM_BIT */
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 void Spdp::SpdpTransport::process_handshake_deadlines(const DCPS::MonotonicTimePoint& now)
 {
   DCPS::RcHandle<Spdp> outer = outer_.lock();
@@ -4664,7 +4667,7 @@ DCPS::MonotonicTime_t Spdp::get_participant_discovered_at(const DCPS::GUID_t& gu
 
 bool Spdp::secure_part_user_data() const
 {
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   return security_enabled_ && secure_participant_user_data_;
 #else
   return false;
@@ -4674,7 +4677,7 @@ bool Spdp::secure_part_user_data() const
 DDS::ParticipantBuiltinTopicData Spdp::get_part_bit_data(bool secure) const
 {
   bool include_user_data = true;
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (secure_part_user_data()) {
     include_user_data = secure;
   }
@@ -4753,7 +4756,7 @@ void Spdp::purge_discovered_participant(const DiscoveredParticipantIter& iter)
 
   remove_lease_expiration_i(iter);
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
   if (security_config_) {
     DDS::Security::SecurityException se = {"", 0, 0};
     DDS::Security::Authentication_var auth = security_config_->get_authentication();
@@ -4828,7 +4831,7 @@ void Spdp::purge_discovered_participant(const DiscoveredParticipantIter& iter)
 #endif
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 void Spdp::set_auth_state(DiscoveredParticipant& dp, AuthState new_state)
 {
   if (dp.auth_state_ == AUTH_STATE_HANDSHAKE &&

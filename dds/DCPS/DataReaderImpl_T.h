@@ -7,14 +7,16 @@
 #  define OPENDDS_HAS_STD_SHARED_PTR
 #endif
 
+#include "BuiltInTopicUtils.h"
+#include "Definitions.h"
+#include "GuidConverter.h"
 #include "MultiTopicImpl.h"
 #include "RakeResults_T.h"
 #include "SubscriberImpl.h"
-#include "BuiltInTopicUtils.h"
-#include "Util.h"
 #include "TypeSupportImpl.h"
+#include "Util.h"
 #include "dcps_export.h"
-#include "GuidConverter.h"
+
 #include "XTypes/DynamicDataAdapter.h"
 
 #ifndef OPENDDS_HAS_STD_SHARED_PTR
@@ -1268,7 +1270,7 @@ private:
                                  const OpenDDS::DCPS::DataSampleHeader& header,
                                  OpenDDS::DCPS::SubscriptionInstance_rch& instance_ptr)
   {
-#if defined(OPENDDS_SECURITY) && OPENDDS_HAS_DYNAMIC_DATA_ADAPTER
+#if OPENDDS_CONFIG_SECURITY && OPENDDS_HAS_DYNAMIC_DATA_ADAPTER
     const bool is_dispose_msg =
       header.message_id_ == OpenDDS::DCPS::DISPOSE_INSTANCE ||
       header.message_id_ == OpenDDS::DCPS::DISPOSE_UNREGISTER_INSTANCE;

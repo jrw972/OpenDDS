@@ -5,7 +5,9 @@
  * See: http://www.opendds.org/license.html
  */
 
-#ifdef OPENDDS_SECURITY
+#include "dds/DCPS/Definitions.h"
+
+#if OPENDDS_CONFIG_SECURITY
 
 #include "Checklist.h"
 
@@ -13,7 +15,6 @@
 #include "EndpointManager.h"
 #include "Ice.h"
 
-#include "dds/DCPS/Definitions.h"
 #include <dds/DCPS/LogAddr.h>
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
@@ -814,4 +815,4 @@ void Checklist::indication()
 } // namespace OpenDDS
 
 OPENDDS_END_VERSIONED_NAMESPACE_DECL
-#endif /* OPENDDS_SECURITY */
+#endif

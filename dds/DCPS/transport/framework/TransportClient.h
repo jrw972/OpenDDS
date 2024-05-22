@@ -14,6 +14,7 @@
 
 #include <dds/DCPS/dcps_export.h>
 #include <dds/DCPS/AssociationData.h>
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/ReactorInterceptor.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/PoolAllocator.h>
@@ -171,7 +172,7 @@ private:
 
 
 
-#if defined(OPENDDS_SECURITY)
+#if OPENDDS_CONFIG_SECURITY
   virtual DDS::Security::ParticipantCryptoHandle get_crypto_handle() const
   {
     return DDS::HANDLE_NIL;

@@ -6,14 +6,15 @@
 #ifndef OPENDDS_DCPS_STATICDISCOVERY_H
 #define OPENDDS_DCPS_STATICDISCOVERY_H
 
-#include "WaitSet.h"
-#include "PoolAllocator.h"
-#include "TopicDetails.h"
-#include "SporadicTask.h"
+#include "BuiltInTopicDataReaderImpls.h"
+#include "DCPS_Utils.h"
+#include "Definitions.h"
 #include "GuidUtils.h"
 #include "Marked_Default_Qos.h"
-#include "DCPS_Utils.h"
-#include "BuiltInTopicDataReaderImpls.h"
+#include "PoolAllocator.h"
+#include "SporadicTask.h"
+#include "TopicDetails.h"
+#include "WaitSet.h"
 #include "dcps_export.h"
 
 #include <ace/Configuration.h>
@@ -873,7 +874,7 @@ public:
                                                  const DDS::DomainParticipantQos& qos,
                                                  XTypes::TypeLookupService_rch tls);
 
-#if defined(OPENDDS_SECURITY)
+#if OPENDDS_CONFIG_SECURITY
   virtual AddDomainStatus add_domain_participant_secure(
     DDS::DomainId_t domain,
     const DDS::DomainParticipantQos& qos,

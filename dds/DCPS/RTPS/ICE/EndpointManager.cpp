@@ -10,7 +10,9 @@
 #include "AgentImpl.h"
 #include "Checklist.h"
 
+#include "dds/DCPS/Definitions.h"
 #include "dds/DCPS/SafetyProfileStreams.h"
+
 #include "dds/DCPS/security/framework/SecurityConfig.h"
 #include "dds/DCPS/security/framework/SecurityRegistry.h"
 
@@ -21,7 +23,7 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 namespace OpenDDS {
 namespace ICE {
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 
 using DCPS::MonotonicTimePoint;
 
@@ -845,7 +847,7 @@ void EndpointManager::purge()
   }
 }
 
-#endif /* OPENDDS_SECURITY */
+#endif
 
 } // namespace ICE
 } // namespace OpenDDS

@@ -5,6 +5,7 @@
 
 #include "RtpsDiscoveryConfig.h"
 
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/LogAddr.h>
 
 namespace {
@@ -116,7 +117,7 @@ RtpsDiscoveryConfig::max_lease_duration(const DCPS::TimeDuration& period)
                                              DCPS::ConfigStoreImpl::Format_IntegerSeconds);
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 DCPS::TimeDuration
 RtpsDiscoveryConfig::security_unsecure_lease_duration() const
 {
@@ -753,7 +754,7 @@ RtpsDiscoveryConfig::sedp_stun_server_address(const DCPS::NetworkAddress& addres
                                              DCPS::ConfigStoreImpl::Kind_IPV4);
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 bool
 RtpsDiscoveryConfig::use_ice() const
 {

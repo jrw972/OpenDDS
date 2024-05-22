@@ -1,7 +1,9 @@
 #include "common.h"
 
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Service_Participant.h>
-#ifdef OPENDDS_SECURITY
+
+#if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/framework/Properties.h>
 #endif
 
@@ -21,7 +23,7 @@ unsigned char expected_data_field_element(int writer_id, int sample_id, int j)
   return static_cast<unsigned char>(j % 256) + writer_id + sample_id * 3;
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 void append(
   DDS::PropertySeq& props, const char* name, const char* value, bool propagate)
 {

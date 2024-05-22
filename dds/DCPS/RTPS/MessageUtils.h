@@ -11,14 +11,15 @@
 #include "RtpsCoreTypeSupportImpl.h"
 #include "rtps_export.h"
 
-#include <dds/DCPS/Hash.h>
-#include <dds/DCPS/Util.h>
-#include <dds/DCPS/Message_Block_Ptr.h>
-#include <dds/DCPS/Serializer.h>
-#include <dds/DCPS/TypeSupportImpl.h>
-#include <dds/DCPS/SequenceNumber.h>
-#include <dds/DCPS/TimeTypes.h>
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidConverter.h>
+#include <dds/DCPS/Hash.h>
+#include <dds/DCPS/Message_Block_Ptr.h>
+#include <dds/DCPS/SequenceNumber.h>
+#include <dds/DCPS/Serializer.h>
+#include <dds/DCPS/TimeTypes.h>
+#include <dds/DCPS/TypeSupportImpl.h>
+#include <dds/DCPS/Util.h>
 
 #include <dds/DdsDcpsInfoUtilsC.h>
 #include <dds/DdsDcpsInfoUtilsTypeSupportImpl.h>
@@ -172,7 +173,7 @@ inline void append_submessage(RTPS::Message& message, const RTPS::DataFragSubmes
   DCPS::push_back(message.submessages, sm);
 }
 
-#ifdef OPENDDS_SECURITY
+#if OPENDDS_CONFIG_SECURITY
 inline DDS::Security::ParticipantSecurityAttributesMask
 security_attributes_to_bitmask(const DDS::Security::ParticipantSecurityAttributes& sec_attr)
 {

@@ -6,13 +6,15 @@
 #include <dds/rtpsrelaylib/RelayTypeSupportImpl.h>
 #include <dds/rtpsrelaylib/Utility.h>
 
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/JsonValueWriter.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/WaitSet.h>
+
 #include <dds/DCPS/RTPS/RtpsDiscovery.h>
 #ifdef ACE_AS_STATIC_LIBS
 #  include <dds/DCPS/transport/rtps_udp/RtpsUdp.h>
-#  ifdef OPENDDS_SECURITY
+#  if OPENDDS_CONFIG_SECURITY
 #    include <dds/DCPS/security/BuiltInPlugins.h>
 #  endif
 #endif

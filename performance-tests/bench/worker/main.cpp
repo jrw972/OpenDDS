@@ -43,6 +43,7 @@
 #include <util.h>
 #include <json_conversion.h>
 
+#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/transport/framework/TransportRegistry.h>
 #ifdef ACE_AS_STATIC_LIBS
@@ -53,7 +54,7 @@
 #  include <dds/DCPS/transport/tcp/Tcp.h>
 #  include <dds/DCPS/transport/multicast/Multicast.h>
 #  include <dds/DCPS/transport/shmem/Shmem.h>
-#  ifdef OPENDDS_SECURITY
+#  if OPENDDS_CONFIG_SECURITY
 #    include <dds/DCPS/security/BuiltInPlugins.h>
 #  endif
 #endif

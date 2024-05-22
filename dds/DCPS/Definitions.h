@@ -17,6 +17,20 @@
 #  include <dds/OpenDDSConfig.h>
 #endif
 
+#if defined(OPENDDS_SECURITY) && defined(OPENDDS_CONFIG_SECURITY)
+#  if !OPENDDS_CONFIG_SECURITY
+#    error OPENDDS_SECURITY is defined but OPENDDS_CONFIG_SECURITY=0
+#  endif
+#elif defined(OPENDDS_SECURITY)
+#  define OPENDDS_CONFIG_SECURITY 1
+#elif defined(OPENDDS_CONFIG_SECURITY)
+#  if OPENDDS_CONFIG_SECURITY
+#    define OPENDDS_SECURITY
+#  endif
+#else
+#  define OPENDDS_CONFIG_SECURITY 0
+#endif
+
 #include <dds/Versioned_Namespace.h>
 
 #include <ace/Message_Block.h>
