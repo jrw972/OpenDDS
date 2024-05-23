@@ -17,9 +17,10 @@
 #include "dds/DCPS/RTPS/RtpsCoreC.h"
 #include "dds/DCPS/RTPS/ICE/Ice.h"
 
-#include "dds/DCPS/Definitions.h"
 #include "dds/DCPS/NetworkAddress.h"
 #include "dds/DCPS/RcEventHandler.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include "ace/SOCK_Dgram.h"
 

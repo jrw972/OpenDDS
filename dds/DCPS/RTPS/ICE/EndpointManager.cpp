@@ -10,11 +10,12 @@
 #include "AgentImpl.h"
 #include "Checklist.h"
 
-#include "dds/DCPS/Definitions.h"
 #include "dds/DCPS/SafetyProfileStreams.h"
 
 #include "dds/DCPS/security/framework/SecurityConfig.h"
 #include "dds/DCPS/security/framework/SecurityRegistry.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/Reverse_Lock_T.h>
 

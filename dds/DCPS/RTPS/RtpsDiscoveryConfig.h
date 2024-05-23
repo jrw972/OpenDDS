@@ -9,8 +9,9 @@
 #include "Spdp.h"
 
 #include <dds/DCPS/AtomicBool.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/debug.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 

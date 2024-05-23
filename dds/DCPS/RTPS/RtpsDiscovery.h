@@ -12,9 +12,10 @@
 #include "rtps_export.h"
 
 #include <dds/DCPS/AtomicBool.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/PoolAllocator.h>
 #include <dds/DCPS/debug.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/Configuration.h>
 

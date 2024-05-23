@@ -10,16 +10,17 @@
 #include "HandleRegistry.h"
 #include "Utility.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/RcObject.h>
 #include <dds/DCPS/dcps_export.h>
 #include <dds/DCPS/debug.h>
 
+#include <dds/DdsDcpsCoreC.h>
+#include <dds/OpenDDSConfigWrapper.h>
+
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DdsSecurityCoreC.h>
 #endif
-#include <dds/DdsDcpsCoreC.h>
 
 #include <ace/config.h>
 #if !defined (ACE_LACKS_PRAGMA_ONCE)

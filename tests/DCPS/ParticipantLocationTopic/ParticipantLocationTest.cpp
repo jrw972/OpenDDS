@@ -9,10 +9,11 @@
 #include <tests/Utils/StatusMatching.h>
 
 #include <dds/DCPS/BuiltInTopicUtils.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/PublisherImpl.h>
 #include <dds/DCPS/Service_Participant.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <dds/DCPS/transport/framework/TransportExceptions.h>
 #include <dds/DCPS/transport/framework/TransportRegistry.h>

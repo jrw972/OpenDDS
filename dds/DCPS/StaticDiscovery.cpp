@@ -5,7 +5,6 @@
 #include "BuiltInTopicUtils.h"
 #include "DataWriterImpl.h"
 #include "DcpsUpcalls.h"
-#include "Definitions.h"
 #include "DomainParticipantImpl.h"
 #include "Marked_Default_Qos.h"
 #include "Qos_Helper.h"
@@ -16,6 +15,8 @@
 #include "transport/framework/TransportRegistry.h"
 
 #include "XTypes/TypeAssignability.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ctype.h>
 

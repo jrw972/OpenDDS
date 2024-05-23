@@ -11,8 +11,8 @@
 #include "RtpsUdpTransport.h"
 
 #include <dds/DdsDcpsGuidTypeSupportImpl.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/LogAddr.h>
 #include <dds/DCPS/Serializer.h>
 

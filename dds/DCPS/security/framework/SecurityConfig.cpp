@@ -10,7 +10,7 @@
 
 #include "Properties.h"
 
-#include <dds/DCPS/Definitions.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <cstring>
 

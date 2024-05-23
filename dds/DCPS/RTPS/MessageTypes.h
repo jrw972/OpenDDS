@@ -10,8 +10,9 @@
 
 #include "RtpsCoreC.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidUtils.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 

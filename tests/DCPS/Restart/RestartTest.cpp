@@ -2,7 +2,6 @@
 
 #include <MessengerTypeSupportImpl.h>
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/debug.h>
@@ -11,6 +10,8 @@
 #include <dds/DCPS/transport/rtps_udp/RtpsUdpLoader.h>
 
 #include <dds/DCPS/RTPS/RtpsDiscovery.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/BuiltInPlugins.h>

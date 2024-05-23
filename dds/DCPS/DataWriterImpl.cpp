@@ -10,7 +10,6 @@
 #include "DCPS_Utils.h"
 #include "DataDurabilityCache.h"
 #include "DataSampleElement.h"
-#include "Definitions.h"
 #include "DomainParticipantImpl.h"
 #include "FeatureDisabledQosCheck.h"
 #include "GuidConverter.h"
@@ -27,6 +26,7 @@
 
 #include "XTypes/TypeObject.h"
 
+#include <dds/OpenDDSConfigWrapper.h>
 #ifndef OPENDDS_NO_OBJECT_MODEL_PROFILE
 #  include "CoherentChangeControl.h"
 #endif

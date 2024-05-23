@@ -8,7 +8,6 @@
 #endif
 
 #include "BuiltInTopicUtils.h"
-#include "Definitions.h"
 #include "GuidConverter.h"
 #include "MultiTopicImpl.h"
 #include "RakeResults_T.h"
@@ -18,6 +17,8 @@
 #include "dcps_export.h"
 
 #include "XTypes/DynamicDataAdapter.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #ifndef OPENDDS_HAS_STD_SHARED_PTR
 #  include <ace/Bound_Ptr.h>

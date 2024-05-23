@@ -15,8 +15,9 @@
 
 #include <ShapesWidget.hpp>
 
-#include "dds/DCPS/Definitions.h"
 #include "dds/DCPS/Service_Participant.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 namespace {
   const char* logoFile()

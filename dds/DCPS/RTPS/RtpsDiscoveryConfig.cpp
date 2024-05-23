@@ -5,8 +5,9 @@
 
 #include "RtpsDiscoveryConfig.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/LogAddr.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 namespace {
   u_short get_default_d0(u_short fallback)

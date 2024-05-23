@@ -7,11 +7,12 @@
 #include "MessengerTypeSupportImpl.h"
 #include "Writer.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/PublisherImpl.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/StaticIncludes.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if defined ACE_AS_STATIC_LIBS && !defined OPENDDS_SAFETY_PROFILE
 #  include <dds/DCPS/transport/udp/Udp.h>

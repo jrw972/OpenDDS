@@ -5,7 +5,7 @@
  * See: http://www.opendds.org/license.html
  */
 
-#include "dds/DCPS/Definitions.h"
+#include "dds/OpenDDSConfigWrapper.h"
 
 #if OPENDDS_CONFIG_SECURITY
 #ifndef OPENDDS_DCPS_RTPS_ICE_AGENTIMPL_H
@@ -19,9 +19,11 @@
 #include "Ice.h"
 #include "Task.h"
 
+#include "dds/DCPS/Definitions.h"
 #include "dds/DCPS/InternalDataReader.h"
 #include "dds/DCPS/ReactorInterceptor.h"
 #include "dds/DCPS/Service_Participant.h"
+
 #include "dds/Versioned_Namespace.h"
 
 #include <ace/Time_Value.h>

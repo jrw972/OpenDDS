@@ -1,7 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/debug.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/OpenSSL_init.h>

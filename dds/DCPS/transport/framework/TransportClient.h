@@ -14,7 +14,6 @@
 
 #include <dds/DCPS/dcps_export.h>
 #include <dds/DCPS/AssociationData.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/ReactorInterceptor.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/PoolAllocator.h>
@@ -23,6 +22,8 @@
 #include <dds/DCPS/RcEventHandler.h>
 #include <dds/DCPS/BuiltInTopicUtils.h>
 #include <dds/DCPS/GuidUtils.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/Time_Value.h>
 #include <ace/Event_Handler.h>

@@ -1,7 +1,8 @@
 #include "common.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Service_Participant.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/framework/Properties.h>

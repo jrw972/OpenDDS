@@ -6,8 +6,9 @@
 #ifndef OPENDDS_DCPS_DEBUG_H
 #define OPENDDS_DCPS_DEBUG_H
 
-#include "Definitions.h"
 #include "dcps_export.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #ifndef OPENDDS_UTIL_BUILD
 #include "transport/framework/TransportDebug.h"

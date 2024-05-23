@@ -5,11 +5,12 @@
  * See: http://www.opendds.org/license.html
  */
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/LogAddr.h>
 #include <dds/DCPS/Message_Block_Ptr.h>
 
 #include <dds/DCPS/RTPS/ICE/Stun.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include "ace/ACE.h"
 #include "ace/Argv_Type_Converter.h"

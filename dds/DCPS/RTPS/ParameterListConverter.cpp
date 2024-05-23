@@ -11,11 +11,12 @@
 
 #include <dds/DCPS/DCPS_Utils.h>
 #include <dds/DCPS/DCPS_Utils.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/NetworkResource.h>
 #include <dds/DCPS/Qos_Helper.h>
 #include <dds/DCPS/Service_Participant.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <cstring>
 

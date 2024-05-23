@@ -11,7 +11,6 @@
 #include "RtpsDiscovery.h"
 
 #include <dds/DCPS/ConnectionRecords.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidConverter.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/Ice.h>
@@ -22,11 +21,12 @@
 
 #include <dds/DCPS/transport/framework/TransportDebug.h>
 
+#include <dds/DdsDcpsGuidC.h>
+#include <dds/OpenDDSConfigWrapper.h>
+
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/framework/SecurityRegistry.h>
 #endif
-
-#include <dds/DdsDcpsGuidC.h>
 
 #include <ace/Reactor.h>
 #include <ace/OS_NS_sys_socket.h> // For setsockopt()

@@ -3,8 +3,7 @@
 
 #include <dds/DdsDcpsCoreC.h>
 #include <dds/DdsDcpsInfrastructureC.h>
-
-#include <dds/DCPS/Definitions.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 const DDS::DomainId_t domain = 113;
 const size_t default_writer_process_count = 2;

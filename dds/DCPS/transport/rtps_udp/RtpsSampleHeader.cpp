@@ -10,7 +10,6 @@
 #include "RtpsUdpSendStrategy.h"
 
 #include <dds/DCPS/DataSampleElement.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/DisjointSequence.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/Qos_Helper.h>
@@ -24,6 +23,8 @@
 
 #include <dds/DCPS/transport/framework/ReceivedDataSample.h>
 #include <dds/DCPS/transport/framework/TransportSendListener.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <cstring>
 

@@ -8,9 +8,9 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <dds/DCPS/Definitions.h>
-
 #include <dds/DCPS/RTPS/LocalEntities.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 TEST(dds_DCPS_RTPS_DiscoveredEntities, LocalEntity_ctor)
 {

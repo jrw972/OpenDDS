@@ -43,7 +43,8 @@
 #include <util.h>
 #include <json_conversion.h>
 
-#include <dds/DCPS/Definitions.h>
+#include <dds/OpenDDSConfigWrapper.h>
+
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/transport/framework/TransportRegistry.h>
 #ifdef ACE_AS_STATIC_LIBS

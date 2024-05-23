@@ -1,8 +1,9 @@
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Discovery.h>
 #include <dds/DCPS/GuidUtils.h>
 
 #include <dds/DCPS/XTypes/TypeLookupService.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <map>
 #include <string>

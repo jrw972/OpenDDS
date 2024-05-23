@@ -1,8 +1,9 @@
 #include "LocalDiscovery.h"
 
 #include <dds/DCPS/BuiltInTopicUtils.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidUtils.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 LocalDiscovery::LocalDiscovery()
   : Discovery()

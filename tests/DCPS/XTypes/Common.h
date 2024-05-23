@@ -5,7 +5,6 @@
 
 #include <dds/DCPS/BuiltInTopicUtils.h>
 #include <dds/DCPS/DCPS_Utils.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/WaitSet.h>
@@ -13,6 +12,8 @@
 #include <dds/DCPS/transport/framework/TransportSendStrategy.h>
 
 #include <dds/DCPS/security/framework/Properties.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #ifdef ACE_AS_STATIC_LIBS
 #  include <dds/DCPS/RTPS/RtpsDiscovery.h>

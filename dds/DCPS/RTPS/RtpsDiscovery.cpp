@@ -8,7 +8,6 @@
 #include "RtpsDiscoveryConfig.h"
 
 #include <dds/DCPS/BuiltInTopicUtils.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/DomainParticipantImpl.h>
 #include <dds/DCPS/LogAddr.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
@@ -20,6 +19,7 @@
 #include <dds/DCPS/transport/framework/TransportSendStrategy.h>
 
 #include <dds/DdsDcpsInfoUtilsC.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <cstdlib>
 #include <limits>

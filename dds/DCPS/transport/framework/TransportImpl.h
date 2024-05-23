@@ -12,7 +12,6 @@
 #include "DataLinkCleanupTask.h"
 
 #include <dds/DCPS/AtomicBool.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/DiscoveryListener.h>
 #include <dds/DCPS/EventDispatcher.h>
 #include <dds/DCPS/PoolAllocator.h>
@@ -22,9 +21,10 @@
 #include <dds/DCPS/ReactorTask_rch.h>
 #include <dds/DCPS/dcps_export.h>
 
-#include <dds/OpenddsDcpsExtC.h>
-#include <dds/DdsDcpsSubscriptionC.h>
 #include <dds/DdsDcpsPublicationC.h>
+#include <dds/DdsDcpsSubscriptionC.h>
+#include <dds/OpenDDSConfigWrapper.h>
+#include <dds/OpenddsDcpsExtC.h>
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DdsSecurityCoreC.h>
 #endif

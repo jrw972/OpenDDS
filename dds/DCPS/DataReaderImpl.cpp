@@ -8,7 +8,6 @@
 #include "DataReaderImpl.h"
 
 #include "DCPS_Utils.h"
-#include "Definitions.h"
 #include "DomainParticipantImpl.h"
 #include "FeatureDisabledQosCheck.h"
 #include "GuidConverter.h"
@@ -31,6 +30,8 @@
 #include "transport/framework/TransportExceptions.h"
 
 #include "XTypes/TypeObject.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 #ifndef DDS_HAS_MINIMUM_BIT
 #  include "BuiltInTopicUtils.h"
 #endif

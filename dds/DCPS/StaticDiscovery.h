@@ -8,7 +8,6 @@
 
 #include "BuiltInTopicDataReaderImpls.h"
 #include "DCPS_Utils.h"
-#include "Definitions.h"
 #include "GuidUtils.h"
 #include "Marked_Default_Qos.h"
 #include "PoolAllocator.h"
@@ -16,6 +15,8 @@
 #include "TopicDetails.h"
 #include "WaitSet.h"
 #include "dcps_export.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/Configuration.h>
 

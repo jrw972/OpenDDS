@@ -12,7 +12,7 @@
 #include "CryptoBuiltInImpl.h"
 #include "UtilityImpl.h"
 
-#include <dds/DCPS/Definitions.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 

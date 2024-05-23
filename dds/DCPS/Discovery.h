@@ -9,7 +9,6 @@
 #include "ConditionVariable.h"
 #include "DataReaderCallbacks.h"
 #include "DataWriterCallbacks.h"
-#include "Definitions.h"
 #include "PoolAllocationBase.h"
 #include "PoolAllocator.h"
 #include "RcHandle_T.h"
@@ -22,6 +21,7 @@
 
 #include <dds/DdsDcpsInfoUtilsC.h>
 #include <dds/DdsDcpsSubscriptionC.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DdsSecurityCoreC.h>

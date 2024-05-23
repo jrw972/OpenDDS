@@ -5,11 +5,11 @@
 #ifndef OPENDDS_DCPS_RTPS_LOCAL_ENTITIES_H
 #define OPENDDS_DCPS_RTPS_LOCAL_ENTITIES_H
 
+#include <dds/OpenDDSConfigWrapper.h>
 #include <dds/Versioned_Namespace.h>
 
 #include <dds/DCPS/DataReaderCallbacks.h>
 #include <dds/DCPS/DataWriterCallbacks.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/SequenceNumber.h>
 #include <dds/DCPS/Time_Helper.h>

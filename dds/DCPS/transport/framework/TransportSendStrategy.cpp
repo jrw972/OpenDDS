@@ -25,8 +25,9 @@
 
 #include <dds/DCPS/DataSampleElement.h>
 #include <dds/DCPS/DataSampleHeader.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Service_Participant.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/Reverse_Lock_T.h>
 

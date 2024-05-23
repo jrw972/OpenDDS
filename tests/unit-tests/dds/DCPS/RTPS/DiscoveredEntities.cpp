@@ -8,10 +8,11 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Time_Helper.h>
 
 #include <dds/DCPS/RTPS/DiscoveredEntities.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/RTPS/RtpsSecurityC.h>

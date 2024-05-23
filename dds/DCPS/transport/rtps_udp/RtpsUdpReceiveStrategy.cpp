@@ -13,12 +13,13 @@
 #include "dds/DCPS/RTPS/MessageUtils.h"
 #include "dds/DCPS/RTPS/MessageTypes.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/LogAddr.h>
 #include <dds/DCPS/Util.h>
 
 #include "dds/DCPS/transport/framework/TransportDebug.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include "ace/Reactor.h"
 

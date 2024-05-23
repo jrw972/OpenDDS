@@ -13,9 +13,9 @@
 #include "InfoC.h"
 
 #include <dds/DdsDcpsInfoUtilsC.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <dds/DCPS/Atomic.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Discovery.h>
 #include <dds/DCPS/GuidUtils.h>
 #include <dds/DCPS/TypeSupportImpl.h>

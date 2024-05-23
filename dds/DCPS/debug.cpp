@@ -7,8 +7,9 @@
 
 #include "debug.h"
 
-#include "Definitions.h"
 #include "Util.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #include "PoolAllocator.h"

@@ -11,7 +11,6 @@
 #include "ContentFilteredTopicImpl.h"
 #include "DCPS_Utils.h"
 #include "DataWriterImpl.h"
-#include "Definitions.h"
 #include "DomainParticipantFactoryImpl.h"
 #include "FeatureDisabledQosCheck.h"
 #include "GuidConverter.h"
@@ -31,6 +30,8 @@
 
 #include "transport/framework/TransportRegistry.h"
 #include "transport/framework/TransportExceptions.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include "security/framework/SecurityRegistry.h"

@@ -10,7 +10,6 @@
 #include "BuiltInTopicUtils.h"
 #include "DataDurabilityCache.h"
 #include "DefaultNetworkConfigMonitor.h"
-#include "Definitions.h"
 #include "GuidConverter.h"
 #include "LinuxNetworkConfigMonitor.h"
 #include "Logging.h"
@@ -24,6 +23,8 @@
 #include "debug.h"
 
 #include "transport/framework/TransportRegistry.h"
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include "../Version.h"
 #if OPENDDS_CONFIG_SECURITY

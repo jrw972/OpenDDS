@@ -10,10 +10,11 @@
 #include "Task.h"
 #include "EndpointManager.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/Qos_Helper.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/TimeTypes.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 

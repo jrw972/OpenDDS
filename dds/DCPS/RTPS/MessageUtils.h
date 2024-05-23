@@ -11,7 +11,6 @@
 #include "RtpsCoreTypeSupportImpl.h"
 #include "rtps_export.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/GuidConverter.h>
 #include <dds/DCPS/Hash.h>
 #include <dds/DCPS/Message_Block_Ptr.h>
@@ -23,6 +22,7 @@
 
 #include <dds/DdsDcpsInfoUtilsC.h>
 #include <dds/DdsDcpsInfoUtilsTypeSupportImpl.h>
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/INET_Addr.h>
 #include <ace/Message_Block.h>

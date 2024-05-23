@@ -8,7 +8,6 @@
 #include "ParticipantBit.h"
 #include "Writer.h"
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/JsonValueWriter.h>
 #include <dds/DCPS/Marked_Default_Qos.h>
 #include <dds/DCPS/PublisherImpl.h>
@@ -18,6 +17,7 @@
 
 #include <dds/DCPS/transport/framework/TransportRegistry.h>
 
+#include <dds/OpenDDSConfigWrapper.h>
 #include <dds/OpenddsDcpsExtTypeSupportImpl.h>
 
 #ifdef ACE_AS_STATIC_LIBS

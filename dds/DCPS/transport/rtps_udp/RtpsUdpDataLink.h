@@ -24,7 +24,6 @@
 #include <dds/DCPS/AddressCache.h>
 #include <dds/DCPS/DataBlockLockPool.h>
 #include <dds/DCPS/DataSampleElement.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/DiscoveryListener.h>
 #include <dds/DCPS/DisjointSequence.h>
 #include <dds/DCPS/FibonacciSequence.h>
@@ -40,6 +39,8 @@
 #include <dds/DCPS/ReactorTask_rch.h>
 #include <dds/DCPS/SequenceNumber.h>
 #include <dds/DCPS/SporadicEvent.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DCPS/security/framework/SecurityConfig.h>

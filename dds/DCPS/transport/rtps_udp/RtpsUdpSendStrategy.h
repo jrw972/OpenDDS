@@ -10,12 +10,13 @@
 #include "RtpsUdpDataLink_rch.h"
 
 #include <dds/DCPS/AtomicBool.h>
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/NetworkAddress.h>
 
 #include <dds/DCPS/transport/framework/TransportSendStrategy.h>
 
 #include <dds/DCPS/RTPS/MessageTypes.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DdsSecurityCoreC.h>

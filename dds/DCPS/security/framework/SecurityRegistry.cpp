@@ -13,13 +13,14 @@
 
 #include <dds/DCPS/transport/framework/EntryExit.h>
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/DomainParticipantImpl.h>
 #include <dds/DCPS/EntityImpl.h>
 #include <dds/DCPS/SafetyProfileStreams.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/Service_Participant.h>
 #include <dds/DCPS/Util.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #include <ace/Singleton.h>
 #include <ace/OS_NS_strings.h>

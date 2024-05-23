@@ -10,8 +10,9 @@
 
 #include <dds/DCPS/dcps_export.h>
 
-#include <dds/DCPS/Definitions.h>
 #include <dds/DCPS/RcObject.h>
+
+#include <dds/OpenDDSConfigWrapper.h>
 
 #if OPENDDS_CONFIG_SECURITY
 #  include <dds/DdsSecurityCoreC.h>
