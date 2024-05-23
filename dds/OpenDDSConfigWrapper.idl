@@ -3,8 +3,8 @@
  * See: http://www.opendds.org/license.html
  */
 
-#ifndef OPENDDS_DDS_OPENDDSCONFIG_WRAPPER_IDL
-#define OPENDDS_DDS_OPENDDSCONFIG_WRAPPER_IDL
+#ifndef OPENDDS_CONFIG_WRAPPER_IDL
+#define OPENDDS_CONFIG_WRAPPER_IDL
 
 #include "OpenDDSConfigWrapper.h"
 
