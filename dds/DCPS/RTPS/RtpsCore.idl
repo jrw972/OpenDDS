@@ -11,7 +11,7 @@
 #include "dds/OpenddsDcpsExt.idl"
 #include "dds/DdsDcpsInfoUtils.idl"
 #include "dds/DdsDcpsInfrastructure.idl"
-#include "dds/OpenDDSConfigWrapper.idl"
+#include <dds/OpenDDSConfigWrapper.idl>
 
 #if OPENDDS_CONFIG_SECURITY
 #include "dds/DdsSecurityParams.idl"
