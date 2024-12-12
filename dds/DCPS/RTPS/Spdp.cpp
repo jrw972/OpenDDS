@@ -2454,7 +2454,7 @@ Spdp::SpdpTransport::open(const DCPS::ReactorTask_rch& reactor_task,
 #endif
 
   reactor(reactor_task->get_reactor());
-  reactor_task->execute_or_enqueue(DCPS::make_rch<RegisterHandlers>(rchandle_from(this), reactor_task));
+  reactor_task->execute_or_enqueue(DCPS::make_rch<RegisterHandlers>(rchandle_from(this)));
 
 #if OPENDDS_CONFIG_SECURITY
   // Now that the endpoint is added, SEDP can write the SPDP info.
@@ -2555,7 +2555,7 @@ void Spdp::SpdpTransport::register_unicast_socket(
   }
 }
 
-void Spdp::SpdpTransport::register_handlers(const DCPS::ReactorTask_rch& reactor_task)
+void Spdp::SpdpTransport::register_handlers(DCPS::ReactorWrapper& reactor_wrapper)
 {
   DCPS::RcHandle<Spdp> outer = outer_.lock();
   if (!outer) {
@@ -2567,7 +2567,7 @@ void Spdp::SpdpTransport::register_handlers(const DCPS::ReactorTask_rch& reactor
     return;
   }
 
-  ACE_Reactor* const reactor = reactor_task->get_reactor();
+  ACE_Reactor* const reactor = reactor_wrapper.get_reactor();
   register_unicast_socket(reactor, unicast_socket_, "IPV4");
 #ifdef ACE_HAS_IPV6
   register_unicast_socket(reactor, unicast_ipv6_socket_, "IPV6");

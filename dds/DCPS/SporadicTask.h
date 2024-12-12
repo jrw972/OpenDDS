@@ -48,11 +48,11 @@ private:
       : sporadic_task_(sporadic_task)
     {}
 
-    virtual void execute(ACE_Reactor*)
+    virtual void execute(ReactorWrapper& reactor_wrapper)
     {
       RcHandle<SporadicTask> st = sporadic_task_.lock();
       if (st) {
-        st->update_schedule();
+        st->update_schedule(reactor_wrapper);
       }
     }
 
@@ -69,7 +69,7 @@ private:
   const RcHandle<SporadicCommand> sporadic_command_;
   mutable ACE_Thread_Mutex mutex_;
 
-  void update_schedule();
+  void update_schedule(ReactorWrapper& reactor_wrapper);
 
   int handle_timeout(const ACE_Time_Value& tv, const void*)
   {

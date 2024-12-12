@@ -9,6 +9,8 @@
 #define OPENDDS_DCPS_REACTORTASK_H
 
 #include "ConditionVariable.h"
+#include "Definitions.h"
+#include "RcEventHandler.h"
 #include "RcObject.h"
 #include "SafetyProfileStreams.h"
 #include "ThreadStatusManager.h"
@@ -29,6 +31,29 @@ OPENDDS_BEGIN_VERSIONED_NAMESPACE_DECL
 
 namespace OpenDDS {
 namespace DCPS {
+
+class OpenDDS_Dcps_Export ReactorWrapper
+{
+public:
+  ReactorWrapper(ACE_Reactor* reactor)
+    : reactor_(reactor)
+  {}
+
+  ACE_Reactor* get_reactor() const { return reactor_; }
+
+  typedef long TimerId; // from ACE_Reactor
+  static const TimerId InvalidTimerId;
+
+  TimerId schedule(RcEventHandler& handler,
+                   const void* arg,
+                   const TimeDuration& delay,
+                   const TimeDuration& interval = TimeDuration());
+
+  void cancel(TimerId timer);
+
+private:
+  ACE_Reactor* reactor_;
+};
 
 class OpenDDS_Dcps_Export ReactorTask
   : public virtual ACE_Task_Base
@@ -63,7 +88,7 @@ public:
     Command() { }
     virtual ~Command() { }
 
-    virtual void execute(ACE_Reactor* reactor) = 0;
+    virtual void execute(ReactorWrapper& reactor_wrapper) = 0;
   };
   typedef RcHandle<Command> CommandPtr;
 
@@ -135,7 +160,7 @@ private:
   ACE_Event_Handler* event_handler_;
   ACE_Reactor_Mask mask_;
 
-  void execute(ACE_Reactor* reactor);
+  void execute(ReactorWrapper& reactor_wrapper);
 };
 
 class OpenDDS_Dcps_Export RemoveHandler : public ReactorTask::Command {
@@ -150,7 +175,7 @@ private:
   ACE_HANDLE io_handle_;
   ACE_Reactor_Mask mask_;
 
-  void execute(ACE_Reactor* reactor);
+  void execute(ReactorWrapper& reactor_wrapper);
 };
 
 } // namespace DCPS

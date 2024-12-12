@@ -1207,7 +1207,7 @@ DataLink::handle_send_request_ack(TransportQueueElement* element)
 }
 
 void
-DataLink::ImmediateStart::execute(ACE_Reactor*) {
+DataLink::ImmediateStart::execute(ReactorWrapper&) {
   TransportClient_rch client_lock = client_.lock();
   if (client_lock) {
     client_lock->use_datalink(remote_, link_);

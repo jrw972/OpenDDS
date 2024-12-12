@@ -654,7 +654,7 @@ private:
       , shutdown_complete_(false)
     {}
 
-    void execute(ACE_Reactor* reactor);
+    void execute(ReactorWrapper& reactor_wrapper);
     void wait();
     DDS::ReturnCode_t shutdown_result() const
     {

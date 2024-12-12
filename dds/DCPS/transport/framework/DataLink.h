@@ -267,7 +267,7 @@ public:
   class ImmediateStart : public virtual ReactorTask::Command {
   public:
     ImmediateStart(RcHandle<DataLink> link, WeakRcHandle<TransportClient> client, const GUID_t& remote) : link_(link), client_(client), remote_(remote) {}
-    void execute(ACE_Reactor* reactor);
+    void execute(ReactorWrapper& reactor_wrapper);
   private:
     RcHandle<DataLink> link_;
     WeakRcHandle<TransportClient> client_;

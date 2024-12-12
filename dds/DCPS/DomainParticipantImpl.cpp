@@ -2446,7 +2446,7 @@ DomainParticipantImpl::signal_liveliness (DDS::LivelinessQosPolicyKind kind)
 }
 
 void
-DomainParticipantImpl::ShutdownHandler::execute(ACE_Reactor*)
+DomainParticipantImpl::ShutdownHandler::execute(ReactorWrapper&)
 {
   ThreadStatusManager::Event ev(TheServiceParticipant->get_thread_status_manager());
 

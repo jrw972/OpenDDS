@@ -57,11 +57,11 @@ private:
       , delay_(delay)
     {}
 
-    virtual void execute(ACE_Reactor*)
+    virtual void execute(ReactorWrapper& reactor_wrapper)
     {
       RcHandle<MultiTask> multi_task = multi_task_.lock();
       if (multi_task) {
-        multi_task->enable_i(delay_);
+        multi_task->enable_i(delay_, reactor_wrapper);
       }
     }
 
@@ -74,11 +74,11 @@ private:
       : multi_task_(multi_task)
     {}
 
-    virtual void execute(ACE_Reactor*)
+    virtual void execute(ReactorWrapper& reactor_wrapper)
     {
       RcHandle<MultiTask> multi_task = multi_task_.lock();
       if (multi_task) {
-        multi_task->disable_i();
+        multi_task->disable_i(reactor_wrapper);
       }
     }
 
@@ -87,9 +87,9 @@ private:
 
   int handle_timeout(const ACE_Time_Value& tv, const void*);
 
-  void enable_i(const TimeDuration& per);
+  void enable_i(const TimeDuration& per, ReactorWrapper& reactor_wrapper);
 
-  void disable_i();
+  void disable_i(ReactorWrapper& reactor_wrapper);
 };
 
 template <typename Delegate>

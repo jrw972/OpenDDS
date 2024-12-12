@@ -55,11 +55,11 @@ private:
       , period_(period)
     {}
 
-    virtual void execute(ACE_Reactor*)
+    virtual void execute(ReactorWrapper& reactor_wrapper)
     {
       RcHandle<PeriodicTask> periodic_task = periodic_task_.lock();
       if (periodic_task) {
-        periodic_task->enable_i(reenable_, period_);
+        periodic_task->enable_i(reenable_, period_, reactor_wrapper);
       }
     }
 
@@ -73,11 +73,11 @@ private:
       : periodic_task_(hb)
     {}
 
-    virtual void execute(ACE_Reactor*)
+    virtual void execute(ReactorWrapper& reactor_wrapper)
     {
       RcHandle<PeriodicTask> periodic_task = periodic_task_.lock();
       if (periodic_task) {
-        periodic_task->disable_i();
+        periodic_task->disable_i(reactor_wrapper);
       }
     }
 
@@ -93,9 +93,9 @@ private:
     return 0;
   }
 
-  void enable_i(bool reenable, const TimeDuration& per);
+  void enable_i(bool reenable, const TimeDuration& per, ReactorWrapper& reactor_wrapper);
 
-  void disable_i();
+  void disable_i(ReactorWrapper& reactor_wrapper);
 };
 
 template <typename Delegate>
