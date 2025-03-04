@@ -93,6 +93,7 @@ WriterInfo::WriterInfo(const WriterInfoListener_rch& reader,
 
 WriterInfo::~WriterInfo()
 {
+  ACE_DEBUG((LM_DEBUG, "### WriterInfo::~WriterInfo this=%@ count=%B\n", this, historic_samples_.size()));
   historic_samples_sweeper_task_->cancel();
   liveliness_check_task_->cancel();
 }
@@ -143,6 +144,7 @@ WriterInfo::check_end_historic_samples(OPENDDS_MAP(SequenceNumber, ReceivedDataS
       last_historic_seq_ = historic_samples_.rbegin()->first;
       delivering_historic_samples_ = true;
       to_deliver.swap(historic_samples_);
+      ACE_DEBUG((LM_DEBUG, "### WriterInfo::check_end_historic_samples historic this=%@ count=%B (swap)\n", this, historic_samples_.size()));
       result = true;
     }
     waiting_for_end_historic_samples_ = false;
@@ -169,6 +171,7 @@ WriterInfo::check_historic(const SequenceNumber& seq, const ReceivedDataSample& 
   last_historic_seq = last_historic_seq_;
   if (waiting_for_end_historic_samples_) {
     historic_samples_.insert(std::make_pair(seq, sample));
+    ACE_DEBUG((LM_DEBUG, "### WriterInfo::check_historic this=%@ count=%B (insert)\n", this, historic_samples_.size()));
     return true;
   }
   return false;

@@ -38,6 +38,11 @@ TransportReassembly::TransportReassembly(const TimeDuration& timeout)
 {
 }
 
+TransportReassembly::~TransportReassembly()
+{
+  ACE_DEBUG((LM_DEBUG, "### TransportReassembly::~TransportReassembly: this=%@ count=%B ([])\n", this, fragments_.size()));
+}
+
 bool
 TransportReassembly::has_frags(const SequenceNumber& seq,
                                const GUID_t& pub_id,
@@ -170,6 +175,7 @@ TransportReassembly::reassemble_i(const FragmentRange& fragRange,
 
   if (iter == fragments_.end()) {
     FragInfo& finfo = fragments_[key];
+    ACE_DEBUG((LM_DEBUG, "### TransportReassembly::reassemble_i: this=%@ count=%B ([])\n", this, fragments_.size()));
     finfo = FragInfo(firstFrag, FragInfo::FragSampleList(), total_frags, expiration);
     finfo.insert(fragRange, data);
     expiration_queue_.push_back(std::make_pair(expiration, key));
@@ -210,6 +216,7 @@ TransportReassembly::reassemble_i(const FragmentRange& fragRange,
       && !iter->second.sample_list_.front().rec_ds_.header_.more_fragments_) {
     std::swap(data, iter->second.sample_list_.front().rec_ds_);
     fragments_.erase(iter);
+    ACE_DEBUG((LM_DEBUG, "### TransportReassembly::reassemble_i: this=%@ count=%B (erase)\n", this, fragments_.size()));
     completed_[key.publication_].insert(key.data_sample_seq_);
     if (Transport_debug_level > 5 || transport_debug.log_fragment_storage) {
       ACE_DEBUG((LM_DEBUG, "(%P|%t) TransportReassembly::reassemble_i: "
@@ -286,6 +293,7 @@ TransportReassembly::data_unavailable(const SequenceNumber& dataSampleSeq,
       ACE_DEBUG((LM_DEBUG, "(%P|%t) TransportReassembly::data_unavailable: "
                   "removed leaving %B fragments\n", fragments_.size()));
   }
+  ACE_DEBUG((LM_DEBUG, "### TransportReassembly::data_unavailable: this=%@ count=%B (erase)\n", this, fragments_.size()));
 }
 
 void TransportReassembly::check_expirations(const MonotonicTimePoint& now)
@@ -296,6 +304,7 @@ void TransportReassembly::check_expirations(const MonotonicTimePoint& now)
       // FragInfo::expiration_ may have changed after insertion into expiration_queue_
       if (iter->second.expiration_ <= now) {
         fragments_.erase(iter);
+        ACE_DEBUG((LM_DEBUG, "### TransportReassembly::check_expiration: this=%@ count=%B (erase)\n", this, fragments_.size()));
         if (Transport_debug_level > 5 || transport_debug.log_fragment_storage) {
           ACE_DEBUG((LM_DEBUG, "(%P|%t) TransportReassembly::check_expirations: "
                      "purge expired leaving %B fragments\n", fragments_.size()));
@@ -334,6 +343,11 @@ TransportReassembly::FragInfo::FragInfo(bool hf, const FragSampleList& rl, ACE_U
 TransportReassembly::FragInfo::FragInfo(const FragInfo& val)
 {
   *this = val;
+}
+
+TransportReassembly::FragInfo::~FragInfo()
+{
+  ACE_DEBUG((LM_DEBUG, "### TransportReassembly::FragInfo::~FragInfo this=%@ count=%B\n", this, sample_list_.size()));
 }
 
 TransportReassembly::FragInfo&
@@ -395,6 +409,7 @@ TransportReassembly::FragInfo::insert(const FragmentRange& fragRange, ReceivedDa
     if (next < fr.frag_range_.first) {
       // insert before 'it'
       sample_finder_[fragRange.second] = sample_list_.insert(it, FragSample(fragRange, data));
+      ACE_DEBUG((LM_DEBUG, "### TransportReassembly::FragInfo::insert this=%@ count=%B (insert)\n", this, sample_list_.size()));
       data.clear();
       VDBG((LM_DEBUG, "(%P|%t) TransportReassembly::insert: (SN: %q) inserted %q-%q on the left of %q-%q\n", sn, fragRange.first, fragRange.second, fr.frag_range_.first, fr.frag_range_.second));
       return true;
@@ -458,6 +473,7 @@ TransportReassembly::FragInfo::insert(const FragmentRange& fragRange, ReceivedDa
       ReceivedDataSample copy(fr.rec_ds_);
 
       sample_list_.erase(it);
+      ACE_DEBUG((LM_DEBUG, "### TransportReassembly::insert this=%@ count=%B (erase)\n", this, sample_list_.size()));
       sample_finder_.erase(fit);
 
       return insert(range, copy);

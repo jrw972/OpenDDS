@@ -1648,6 +1648,7 @@ RtpsUdpDataLink::RtpsReader::pre_stop_helper()
   stopping_ = true;
 
   preassociation_writers_.clear();
+  ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::pre_stop_helper: this=%@ count=%B (clear)\n", this, preassociation_writers_.size()));
   log_remote_counts("pre_stop_helper");
 
   RtpsUdpDataLink_rch link = link_.lock();
@@ -1684,6 +1685,8 @@ RtpsUdpDataLink::RtpsReader::RtpsReader(const RtpsUdpDataLink_rch& link, const G
 
 RtpsUdpDataLink::RtpsReader::~RtpsReader()
 {
+  ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::~RtpsReader: this=%@ count=%B (pre)\n", this, preassociation_writers_.size()));
+  ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::~RtpsReader: this=%@ count=%B\n", this, remote_writers_.size()));
 }
 
 bool
@@ -1731,6 +1734,7 @@ RtpsUdpDataLink::RtpsReader::process_data_i(const RTPS::DataSubmessage& data,
       const ReceivedDataSample* sample =
         link->receive_strategy()->withhold_data_from(id_);
       writer->held_.insert(std::make_pair(seq, *sample));
+      ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::process_data_i: this=%@ count=%B (insert)\n", this, writer->held_.size()));
 
     } else if (writer->recvd_.contains(seq)) {
       if (transport_debug.log_dropped_messages) {
@@ -1753,6 +1757,7 @@ RtpsUdpDataLink::RtpsReader::process_data_i(const RTPS::DataSubmessage& data,
         writer->recvd_.dump();
       }
       writer->held_.insert(std::make_pair(seq, *sample));
+      ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::process_data_i: this=%@ count=%B (insert)\n", this, writer->held_.size()));
       writer->recvd_.insert(seq);
 
     } else if (writer->recvd_.disjoint() || writer->recvd_.cumulative_ack() != seq.previous()) {
@@ -1766,6 +1771,7 @@ RtpsUdpDataLink::RtpsReader::process_data_i(const RTPS::DataSubmessage& data,
       const ReceivedDataSample* sample =
         link->receive_strategy()->withhold_data_from(id_);
       writer->held_.insert(std::make_pair(seq, *sample));
+      ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::process_data_i: this=%@ count=%B (insert)\n", this, writer->held_.size()));
       writer->recvd_.insert(seq);
 
     } else {
@@ -1868,6 +1874,7 @@ RtpsUdpDataLink::RtpsReader::process_gap_i(const RTPS::GapSubmessage& gap,
            limit = writer->held_.upper_bound(gaps.high()); pos != limit;) {
       if (gaps.contains(pos->first)) {
         writer->held_.erase(pos++);
+        ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::process_gap_i: this=%@ count=%B (erase)\n", this, writer->held_.size()));
       } else {
         ++pos;
       }
@@ -1990,6 +1997,7 @@ RtpsUdpDataLink::RtpsReader::process_heartbeat_i(const RTPS::HeartBeatSubmessage
     if (writer->recvd_.empty() && (directed || !writer->sends_directed_hb())) {
       OPENDDS_ASSERT(preassociation_writers_.count(writer));
       preassociation_writers_.erase(writer);
+      ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::process_heartbeat_i: this=%@ count=%B (erase)\n", this, preassociation_writers_.size()));
       if (transport_debug.log_progress) {
         log_progress("RTPS reader/writer association complete", id_, writer->id_, writer->participant_discovered_at_);
       }
@@ -2005,6 +2013,7 @@ RtpsUdpDataLink::RtpsReader::process_heartbeat_i(const RTPS::HeartBeatSubmessage
       writer->recvd_.insert(sr);
       while (!writer->held_.empty() && writer->held_.begin()->first <= sr.second) {
         writer->held_.erase(writer->held_.begin());
+        ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::process_heartbeat_i: this=%@ count=%B (erase)\n", this, writer->held_.size()));
       }
       for (WriterInfo::HeldMap::const_iterator it = writer->held_.begin(); it != writer->held_.end(); ++it) {
         writer->recvd_.insert(it->first);
@@ -2032,6 +2041,11 @@ RtpsUdpDataLink::RtpsReader::process_heartbeat_i(const RTPS::HeartBeatSubmessage
 
   //FUTURE: support assertion of liveliness for MANUAL_BY_TOPIC
   return;
+}
+
+RtpsUdpDataLink::WriterInfo::~WriterInfo()
+{
+  ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::WriterInfo::~WriterInfo: this=%@ count=%B\n", this, held_.size()));
 }
 
 bool
@@ -2180,7 +2194,10 @@ RtpsUdpDataLink::RtpsReader::add_writer(const WriterInfo_rch& writer)
   WriterInfoMap::const_iterator iter = remote_writers_.find(writer->id_);
   if (iter == remote_writers_.end()) {
     remote_writers_[writer->id_] = writer;
+    ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::add_writer: this=%@ count=%B ([])\n", this, remote_writers_.size()));
+
     preassociation_writers_.insert(writer);
+    ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::add_writer: this=%@ count=%B (insert)\n", this, preassociation_writers_.size()));
     log_remote_counts("add_writer");
 
     RtpsUdpDataLink_rch link = link_.lock();
@@ -2214,7 +2231,9 @@ RtpsUdpDataLink::RtpsReader::remove_writer(const GUID_t& id)
   WriterInfoMap::iterator pos = remote_writers_.find(id);
   if (pos != remote_writers_.end()) {
     preassociation_writers_.erase(pos->second);
+    ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::remove_writer: this=%@ count=%B (erase)\n", this, preassociation_writers_.size()));
     remote_writers_.erase(pos);
+    ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::remove_writer: this=%@ count=%B (erase)\n", this, remote_writers_.size()));
     log_remote_counts("remove_writer");
     return true;
   }
@@ -4578,6 +4597,7 @@ RtpsUdpDataLink::RtpsReader::deliver_held_data(const GUID_t& src)
     for (WriterInfo::HeldMap::iterator it = wi->second->held_.begin(); it != end; /*increment in loop body*/) {
       to_deliver.push_back(it->second);
       wi->second->held_.erase(it++);
+      ACE_DEBUG((LM_DEBUG, "### RtpsUdpDataLink::RtpsReader::deliver_held_data: this=%@ count=%B (erase)\n", this, wi->second->held_.size()));
     }
   }
 

@@ -65,6 +65,7 @@ typedef std::pair<FragmentNumber, FragmentNumber> FragmentRange;
 class OpenDDS_Dcps_Export TransportReassembly : public virtual RcObject {
 public:
   explicit TransportReassembly(const TimeDuration& timeout = TimeDuration(300));
+  ~TransportReassembly();
 
   /// Called by TransportReceiveStrategy if the fragmentation header flag
   /// is set.  Returns true/false to indicate if data should be delivered to
@@ -131,6 +132,7 @@ private:
     FragInfo();
     FragInfo(bool hf, const FragSampleList& rl, ACE_UINT32 tf, const MonotonicTimePoint& expiration);
     FragInfo(const FragInfo& val);
+    ~FragInfo();
 
     FragInfo& operator=(const FragInfo& rhs);
 

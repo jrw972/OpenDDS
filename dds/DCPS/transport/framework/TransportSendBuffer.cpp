@@ -63,6 +63,8 @@ SingleSendBuffer::SingleSendBuffer(size_t capacity,
 
 SingleSendBuffer::~SingleSendBuffer()
 {
+  ACE_DEBUG((LM_DEBUG, "### SingleSendBuffer::~SingleSendBuffer: this=%@ count=%B\n", this, fragments_.size()));
+
   release_all();
 }
 
@@ -131,6 +133,7 @@ SingleSendBuffer::release_i(BufferMap::iterator buffer_iter)
         bm_it->second.second = 0;
       }
       fragments_.erase(fm_it);
+      ACE_DEBUG((LM_DEBUG, "### SingleSendBuffer::release_i: this=%@ count=%B (erase)\n", this, fragments_.size()));
     }
   }
 
@@ -162,6 +165,7 @@ SingleSendBuffer::remove_i(BufferMap::iterator buffer_iter, BufferVec& removed)
         removed.push_back(bm_it->second);
       }
       fragments_.erase(fm_it);
+      ACE_DEBUG((LM_DEBUG, "### SingleSendBuffer::remove_i: this=%@ count=%B (erase)\n", this, fragments_.size()));
     }
   }
 
@@ -323,6 +327,7 @@ SingleSendBuffer::insert_fragment(SequenceNumber sequence,
                                       static_cast<ACE_Message_Block*>(0));
 
   BufferType& buffer = fragments_[sequence][fragment];
+  ACE_DEBUG((LM_DEBUG, "### SingleSendBuffer::insert_fragment: this=%@ count=%B ([])\n", this, fragments_.size()));
   if (is_last_fragment) {
     pre_seq_.erase(sequence);
   }

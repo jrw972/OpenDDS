@@ -135,6 +135,8 @@ DataReaderImpl::~DataReaderImpl()
 {
   DBG_ENTRY_LVL("DataReaderImpl", "~DataReaderImpl", 6);
 
+  ACE_DEBUG((LM_DEBUG, "### DataReaderImpl::~DataReaderImpl: this=%@ count=%B (erase)\n", this, writers_.size()));
+
   deadline_task_->cancel();
 
 #ifndef OPENDDS_SAFETY_PROFILE
@@ -276,6 +278,7 @@ DataReaderImpl::add_association(const WriterAssociation& writer,
         WriterMapType::value_type(
           writer_id,
           info));
+    ACE_DEBUG((LM_DEBUG, "### DataReaderImpl::add_association: this=%@ count=%B (insert)\n", this, writers_.size()));
 
     // Schedule timer if necessary
     //   - only need to check reader qos - we know the writer must be >= reader
@@ -546,6 +549,7 @@ DataReaderImpl::remove_associations_i(const WriterIdSeq& writers,
       } else {
         push_back(updated_writers, writer_id);
       }
+      ACE_DEBUG((LM_DEBUG, "### DataReaderImpl::remove_association_i: this=%@ count=%B (erase)\n", this, writers_.size()));
     }
   }
 

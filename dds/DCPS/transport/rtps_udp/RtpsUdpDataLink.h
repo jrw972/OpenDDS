@@ -611,6 +611,7 @@ private:
       , participant_flags_(participant_flags)
       , acknack_count_(0)
     { }
+    ~WriterInfo();
 
     bool should_nack() const;
     bool sends_directed_hb() const;
